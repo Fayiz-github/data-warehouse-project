@@ -1,0 +1,22 @@
+# Virtual environment
+venv/
+
+# Environment variables (contains API keys & DB credentials)
+.env
+
+# Raw data files (too large for git)
+data/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

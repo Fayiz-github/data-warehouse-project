@@ -1,0 +1,40 @@
+# Virtual environment
+venv/
+
+# Environment variables (contains API keys & DB credentials)
+.env
+
+# Raw data files (too large for git)
+data/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Microsoft Office temp files
+~$*
+
+# Scratch / temp scripts
+test_*.py
+
+# Personal reports & generated output (local only, not for GitHub)
+reports/
+
+# Personal report generator scripts (DOCX tooling, not part of core project)
+doc_builder.py
+generate_report.py
+
+# Personal explanation/study documents (local only)
+star_schema_explanation.md
+star_schema_explanation.docx
+Stock_Market_Data_Warehouse_Guide.docx

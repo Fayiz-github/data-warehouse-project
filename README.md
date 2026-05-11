@@ -1,7 +1,7 @@
 # Stock Market Data Warehouse
 
 A PostgreSQL-based data warehouse built on top of real-time stock market data fetched from Yahoo Finance via `yfinance`.  
-Implements a full ETL pipeline, star schema design, SCD Type 2, analytical queries, materialized views, and performance indexing.
+Implements a full ETL pipeline, star schema design, SCD Type 2 tracking, analytical queries, materialized views, performance indexing, and an automated reporting system.
 
 ---
 
@@ -66,11 +66,17 @@ data-warehouse-project/
 │   ├── fetch_data.py              # Phase 1: Data extraction
 │   ├── load_dimensions.py         # Phase 3: Load all 6 dim tables
 │   ├── load_facts.py              # Phase 3: Load fact_stock_prices
-│   └── verify_warehouse.py        # Phase 3: 31 data quality checks
+│   ├── verify_warehouse.py        # Phase 3: 31 data quality checks
+│   └── scd_demo.py                # Phase 7: SCD Type 2 Live Demo
 ├── sql/
-│   └── create_warehouse.sql       # Phase 2: Full DDL + seeded data
-├── queries/
-│   └── analytical_queries.sql     # Phase 4: 10 business queries
+│   ├── create_warehouse.sql       # Phase 2: Full DDL + seeded data
+│   ├── analytical_queries.sql     # Phase 4: 10 business queries
+│   ├── materialized_views.sql     # Phase 5: 3 cached views for BI
+│   └── performance_indexes.sql    # Phase 6: B-tree indexes for tuning
+├── docs/
+│   └── Project_Progress_Report.docx # Generated project report
+├── doc_builder.py                 # Core reporting engine
+├── generate_report.py             # Phase 10: Automated report generator
 ├── .env.example                   # Environment variable template
 ├── .gitignore
 ├── requirements.txt
@@ -79,11 +85,43 @@ data-warehouse-project/
 
 ---
 
+## Key Features
+
+### 1. SCD Type 2 (Historical Tracking)
+Tracks company changes (like sector or industry shifts) over time.  
+**Run Demo:** `python etl/scd_demo.py` to see a live simulation of Apple (AAPL) changing sectors while preserving historical facts.
+
+### 2. 31 Automated Data Quality Checks
+Comprehensive verification suite covering:
+- FK Integrity & Orphan Detection
+- Duplicate Prevention
+- NULL Validation for OHLCV columns
+- Business Logic (e.g., High >= Low)
+- Symbol & Date Coverage
+
+### 3. Materialized Views (Performance)
+Pre-computed results for heavy analytical queries:
+- `mv_sector_performance_daily`
+- `mv_stock_monthly_summary`
+- `mv_market_cap_tier_quarterly`
+
+### 4. B-Tree Performance Indexes
+Optimized indexing on `fact_stock_prices` for:
+- Date-range scans (`date_key`)
+- Symbol lookups (`stock_key`)
+- Sector aggregations (`sector_key`)
+
+### 5. Automated Reporting
+Generates a professionally formatted DOCX report summarizing the entire project lifecycle, architecture, and current progress.  
+**Generate:** `python generate_report.py`
+
+---
+
 ## Setup & Run
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/<your-username>/data-warehouse-project.git
+git clone https://github.com/Fayiz-github/data-warehouse-project.git
 cd data-warehouse-project
 ```
 
@@ -91,7 +129,6 @@ cd data-warehouse-project
 ```bash
 python -m venv venv
 venv\Scripts\activate        # Windows
-source venv/bin/activate     # Linux/Mac
 pip install -r requirements.txt
 ```
 
@@ -101,74 +138,31 @@ copy .env.example .env
 # Fill in your PostgreSQL credentials in .env
 ```
 
-### 4. Create PostgreSQL database
-```bash
-psql -U postgres -c "CREATE DATABASE warehouse_db;"
-```
-
-### 5. Apply schema
+### 4. Apply Schema & Optimization
 ```bash
 psql -U postgres -d warehouse_db -f sql/create_warehouse.sql
+psql -U postgres -d warehouse_db -f sql/materialized_views.sql
+psql -U postgres -d warehouse_db -f sql/performance_indexes.sql
 ```
 
-### 6. Run ETL pipeline
+### 5. Run ETL Pipeline
 ```bash
-# Fetch data from Yahoo Finance
-python etl/fetch_data.py
-
-# Load dimensions (dim_sector, dim_exchange, dim_country, dim_stock)
-python etl/load_dimensions.py
-
-# Load facts (100,400 rows → fact_stock_prices)
-python etl/load_facts.py
-
-# Verify data quality (31 checks)
-python etl/verify_warehouse.py
+python etl/fetch_data.py       # Extract
+python etl/load_dimensions.py  # Load Dims
+python etl/load_facts.py       # Load Facts
+python etl/verify_warehouse.py # Verify (31 Checks)
 ```
-
-### 7. Run analytical queries
-```bash
-psql -U postgres -d warehouse_db -f queries/analytical_queries.sql
-```
-
----
-
-## Key Features
-
-- **SCD Type 2** on `dim_stock` — tracks company sector/industry changes over time with `effective_from`, `effective_to`, `is_current`, `version`
-- **31 automated data quality checks** — FK integrity, NULL validation, business logic, duplicate detection
-- **10 business analytical queries** — sector performance, volatility, YoY trends, rolling averages, market cap analysis
-- **6-dimensional star schema** — enables multi-dimensional slicing and dicing
-- **100,400 fact rows** — 80 stocks × 5 years of daily trading data
-
----
-
-## Data Quality Verification Results
-
-| Category | Checks | Result |
-|---|---|---|
-| Row counts | 7 | ✅ All pass |
-| 100K target | 1 | ✅ 100,400 rows |
-| FK integrity | 4 | ✅ No orphans |
-| Duplicate detection | 1 | ✅ No duplicates |
-| NULL validation | 5 | ✅ No NULLs |
-| Business logic | 4 | ✅ All pass |
-| Date coverage | 2 | ✅ 2021-2026 |
-| SCD Type 2 | 3 | ✅ Integrity valid |
-| Symbol coverage | 1 | ✅ 80 symbols |
-| Dimension completeness | 3 | ✅ All pass |
-| **Total** | **31** | **✅ 31/31** |
 
 ---
 
 ## Technologies Used
 
-- **PostgreSQL 18** — relational data warehouse
-- **Python 3.x** — ETL scripting
-- **yfinance** — real-time stock data extraction
-- **pandas** — data transformation
-- **psycopg2** — PostgreSQL adapter
-- **python-dotenv** — environment variable management
+- **PostgreSQL 18** — Core Data Warehouse
+- **Python 3.x** — ETL & Reporting Logic
+- **yfinance** — Financial Data Extraction
+- **pandas** — Data Transformation
+- **psycopg2** — DB Connectivity
+- **python-docx** — Professional Report Generation
 
 ---
 

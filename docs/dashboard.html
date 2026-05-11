@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Stock Market Data Warehouse — BI Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0a0e1a;
+    --surface:   #111827;
+    --card:      #161d2f;
+    --border:    #1e2d4a;
+    --accent1:   #3b82f6;
+    --accent2:   #10b981;
+    --accent3:   #f59e0b;
+    --accent4:   #ef4444;
+    --accent5:   #8b5cf6;
+    --text:      #e2e8f0;
+    --muted:     #64748b;
+    --glow1:     rgba(59,130,246,.15);
+    --glow2:     rgba(16,185,129,.15);
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    padding: 0 0 60px;
+  }
+
+  /* ── NAV ─────────────────────────── */
+  header {
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 68px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+  }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-icon {
+    width: 38px; height: 38px;
+    background: linear-gradient(135deg, var(--accent1), var(--accent5));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .logo-text h1 { font-size: 16px; font-weight: 700; color: #fff; }
+  .logo-text p  { font-size: 11px; color: var(--muted); }
+  .badge {
+    background: linear-gradient(135deg, var(--accent2), #059669);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 20px;
+    letter-spacing: .5px;
+  }
+  .nav-meta { display: flex; gap: 20px; align-items: center; }
+  .nav-meta span { font-size: 12px; color: var(--muted); }
+  .live-dot {
+    width: 8px; height: 8px;
+    background: var(--accent2);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.4)} }
+
+  /* ── PAGE WRAP ────────────────────── */
+  .container { max-width: 1440px; margin: 0 auto; padding: 28px 32px; }
+
+  /* ── SECTION TITLES ──────────────── */
+  .section-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin: 32px 0 16px;
+  }
+
+  /* ── KPI CARDS ───────────────────── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+  }
+  .kpi {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 22px 20px;
+    position: relative;
+    overflow: hidden;
+    transition: transform .2s, box-shadow .2s;
+  }
+  .kpi:hover { transform: translateY(-3px); box-shadow: 0 12px 40px rgba(0,0,0,.4); }
+  .kpi::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: 16px 16px 0 0;
+  }
+  .kpi.blue::before   { background: linear-gradient(90deg, var(--accent1), var(--accent5)); }
+  .kpi.green::before  { background: linear-gradient(90deg, var(--accent2), #34d399); }
+  .kpi.amber::before  { background: linear-gradient(90deg, var(--accent3), #fbbf24); }
+  .kpi.red::before    { background: linear-gradient(90deg, var(--accent4), #f97316); }
+  .kpi.purple::before { background: linear-gradient(90deg, var(--accent5), var(--accent1)); }
+
+  .kpi-icon { font-size: 22px; margin-bottom: 12px; }
+  .kpi-value { font-size: 28px; font-weight: 800; color: #fff; line-height: 1; }
+  .kpi-label { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .kpi-sub   { font-size: 11px; color: var(--accent2); margin-top: 4px; font-weight: 500; }
+
+  /* ── CHART GRID ──────────────────── */
+  .chart-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .chart-grid-3 { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+  .chart-grid-full { display: grid; grid-template-columns: 1fr; gap: 20px; }
+
+  .chart-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 24px;
+    transition: box-shadow .2s;
+  }
+  .chart-card:hover { box-shadow: 0 8px 32px rgba(59,130,246,.08); }
+
+  .chart-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; }
+  .chart-header h3 { font-size: 14px; font-weight: 600; color: #fff; }
+  .chart-header p  { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .chart-badge {
+    font-size: 10px; font-weight: 600; padding: 3px 8px;
+    border-radius: 8px; white-space: nowrap;
+  }
+  .chart-badge.blue   { background: rgba(59,130,246,.15); color: var(--accent1); }
+  .chart-badge.green  { background: rgba(16,185,129,.15); color: var(--accent2); }
+  .chart-badge.amber  { background: rgba(245,158,11,.15); color: var(--accent3); }
+  .chart-badge.purple { background: rgba(139,92,246,.15);  color: var(--accent5); }
+
+  .chart-canvas-wrap { position: relative; }
+
+  /* ── FOOTER ──────────────────────── */
+  footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+    margin-top: 48px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+  }
+  footer strong { color: var(--accent1); }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">📈</div>
+    <div class="logo-text">
+      <h1>Stock Market Data Warehouse</h1>
+      <p>Mohammed (Fayiz) — Data Engineering Project</p>
+    </div>
+  </div>
+  <div class="nav-meta">
+    <span>May 2021 – May 2026</span>
+    <span>•</span>
+    <span>80 Stocks · 10 Sectors</span>
+    <span>•</span>
+    <div class="live-dot"></div>
+    <span class="badge">100,480 Records</span>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- KPI CARDS -->
+  <div class="section-title">Key Performance Indicators</div>
+  <div class="kpi-grid">
+    <div class="kpi blue">
+      <div class="kpi-icon">🗄️</div>
+      <div class="kpi-value">100,480</div>
+      <div class="kpi-label">Total Fact Rows</div>
+      <div class="kpi-sub">✅ Target Met (100K+)</div>
+    </div>
+    <div class="kpi green">
+      <div class="kpi-icon">📊</div>
+      <div class="kpi-value">80</div>
+      <div class="kpi-label">Stocks Tracked</div>
+      <div class="kpi-sub">Across 10 Sectors</div>
+    </div>
+    <div class="kpi amber">
+      <div class="kpi-icon">📅</div>
+      <div class="kpi-value">5 Years</div>
+      <div class="kpi-label">Date Coverage</div>
+      <div class="kpi-sub">May 2021 → May 2026</div>
+    </div>
+    <div class="kpi purple">
+      <div class="kpi-icon">🏆</div>
+      <div class="kpi-value">+1,408%</div>
+      <div class="kpi-label">Best 5yr Return</div>
+      <div class="kpi-sub">NVDA (NVIDIA)</div>
+    </div>
+    <div class="kpi red">
+      <div class="kpi-icon">✅</div>
+      <div class="kpi-value">31/31</div>
+      <div class="kpi-label">Quality Checks</div>
+      <div class="kpi-sub">All Passed</div>
+    </div>
+  </div>
+
+  <!-- ROW 1: Price Trend + Top Stocks -->
+  <div class="section-title">Market Overview</div>
+  <div class="chart-grid-3">
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <h3>Average Market Price Trend</h3>
+          <p>Mean closing price across all 80 stocks (3-year view)</p>
+        </div>
+        <span class="chart-badge blue">Time Series</span>
+      </div>
+      <div class="chart-canvas-wrap" style="height:280px">
+        <canvas id="priceTrendChart"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <h3>Top 10 Stocks — 5yr Return</h3>
+          <p>Highest total return 2021 → 2026</p>
+        </div>
+        <span class="chart-badge green">% Gain</span>
+      </div>
+      <div class="chart-canvas-wrap" style="height:280px">
+        <canvas id="topStocksChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 2: Sector Performance + Volatility -->
+  <div class="section-title">Sector Analysis</div>
+  <div class="chart-grid-2">
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <h3>Sector Average Daily Return</h3>
+          <p>Which sector gives the best daily returns?</p>
+        </div>
+        <span class="chart-badge amber">Avg %</span>
+      </div>
+      <div class="chart-canvas-wrap" style="height:260px">
+        <canvas id="sectorReturnChart"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <h3>Sector Volatility (Risk)</h3>
+          <p>Std deviation of daily returns — higher = riskier</p>
+        </div>
+        <span class="chart-badge purple">Std Dev</span>
+      </div>
+      <div class="chart-canvas-wrap" style="height:260px">
+        <canvas id="sectorVolChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 3: Volume + Risk/Return -->
+  <div class="section-title">Trading Volume & Risk-Return</div>
+  <div class="chart-grid-2">
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <h3>Top 10 Stocks by Trading Volume</h3>
+          <p>Total cumulative volume over 5 years (billions)</p>
+        </div>
+        <span class="chart-badge blue">Volume</span>
+      </div>
+      <div class="chart-canvas-wrap" style="height:260px">
+        <canvas id="volumeChart"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <h3>Risk vs. Return by Sector</h3>
+          <p>High return + low volatility = ideal investment</p>
+        </div>
+        <span class="chart-badge purple">Scatter</span>
+      </div>
+      <div class="chart-canvas-wrap" style="height:260px">
+        <canvas id="riskReturnChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  Built with <strong>PostgreSQL 18</strong> · <strong>Python 3</strong> · <strong>yfinance</strong> &nbsp;|&nbsp;
+  Star Schema: 6 Dimensions + 1 Fact Table &nbsp;|&nbsp;
+  Data Engineering Internship — <strong>Mohammed (Fayiz)</strong> · May 2026
+</footer>
+
+<script>
+Chart.defaults.color = '#64748b';
+Chart.defaults.borderColor = '#1e2d4a';
+Chart.defaults.font.family = 'Inter';
+
+const tooltipStyle = {
+  backgroundColor: '#1e293b',
+  borderColor: '#334155',
+  borderWidth: 1,
+  titleColor: '#f1f5f9',
+  bodyColor: '#94a3b8',
+  padding: 12,
+  cornerRadius: 10,
+};
+
+/* ── 1. PRICE TREND ─────────────────── */
+const monthlyLabels = ["Jun '23","Jul '23","Aug '23","Sep '23","Oct '23","Nov '23","Dec '23","Jan '24","Feb '24","Mar '24","Apr '24","May '24","Jun '24","Jul '24","Aug '24","Sep '24","Oct '24","Nov '24","Dec '24","Jan '25","Feb '25","Mar '25","Apr '25","May '25","Jun '25","Jul '25","Aug '25","Sep '25","Oct '25","Nov '25","Dec '25","Jan '26","Feb '26","Mar '26","Apr '26","May '26"];
+const monthlyData  = [157.42,163.5,162.11,159.29,152.6,159.34,168.8,171.39,175.09,179.11,175.34,177.71,177.85,183.24,186.47,191.69,195.79,198.78,198.13,197.21,198.69,188.85,176.89,187.38,192.55,199.32,202.26,207.12,212.23,209.47,212.7,218.95,222.36,214.74,221.24,226.03];
+
+new Chart(document.getElementById('priceTrendChart'), {
+  type: 'line',
+  data: {
+    labels: monthlyLabels,
+    datasets: [{
+      label: 'Avg Close Price ($)',
+      data: monthlyData,
+      borderColor: '#3b82f6',
+      backgroundColor: 'rgba(59,130,246,0.08)',
+      borderWidth: 2.5,
+      fill: true,
+      tension: 0.4,
+      pointRadius: 0,
+      pointHoverRadius: 6,
+      pointHoverBackgroundColor: '#3b82f6',
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: { ...tooltipStyle, mode: 'index', intersect: false,
+        callbacks: { label: ctx => ` $${ctx.parsed.y.toFixed(2)}` }
+      }
+    },
+    scales: {
+      x: { grid: { color: 'rgba(255,255,255,.03)' }, ticks: { maxTicksLimit: 8 } },
+      y: { grid: { color: 'rgba(255,255,255,.03)' }, ticks: { callback: v => '$' + v } }
+    }
+  }
+});
+
+/* ── 2. TOP STOCKS ──────────────────── */
+const top10Labels = ['NVDA','AMD','GE','MPC','CAT','GOOGL','VLO','WMT','GS','ORCL'];
+const top10Data   = [1408.51,499.01,346.59,309.41,269.91,249.78,202.69,177.87,154.01,144.48];
+const barColors   = ['#10b981','#3b82f6','#8b5cf6','#f59e0b','#ef4444','#06b6d4','#f97316','#84cc16','#e879f9','#14b8a6'];
+
+new Chart(document.getElementById('topStocksChart'), {
+  type: 'bar',
+  data: {
+    labels: top10Labels,
+    datasets: [{
+      label: '5yr Return (%)',
+      data: top10Data,
+      backgroundColor: barColors,
+      borderRadius: 8,
+      borderSkipped: false,
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: { ...tooltipStyle, callbacks: { label: ctx => ` +${ctx.parsed.x.toFixed(1)}%` } }
+    },
+    scales: {
+      x: { grid: { color: 'rgba(255,255,255,.03)' }, ticks: { callback: v => v + '%' } },
+      y: { grid: { display: false } }
+    }
+  }
+});
+
+/* ── 3. SECTOR RETURN ───────────────── */
+const sectorLabels = ['Technology','Communication','Energy','Consumer Def.','Financial','Healthcare','Industrials','Consumer Cyc.','Real Estate','Utilities'];
+const sectorReturn = [0.0503,0.0346,0.0269,0.0268,0.0267,0.0211,0.0174,0.0139,0.0108,0.0029];
+
+new Chart(document.getElementById('sectorReturnChart'), {
+  type: 'bar',
+  data: {
+    labels: sectorLabels,
+    datasets: [{
+      label: 'Avg Daily Return (%)',
+      data: sectorReturn,
+      backgroundColor: 'rgba(245,158,11,0.8)',
+      borderColor: '#f59e0b',
+      borderWidth: 1,
+      borderRadius: 6,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: { ...tooltipStyle, callbacks: { label: ctx => ` ${ctx.parsed.y.toFixed(4)}%` } }
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+      y: { grid: { color: 'rgba(255,255,255,.03)' }, ticks: { callback: v => v + '%' } }
+    }
+  }
+});
+
+/* ── 4. SECTOR VOLATILITY ───────────── */
+const sectorVol = [2.051,1.7547,1.72,1.5644,1.4855,1.4578,1.4482,1.3037,1.2603,1.0049];
+
+new Chart(document.getElementById('sectorVolChart'), {
+  type: 'radar',
+  data: {
+    labels: sectorLabels,
+    datasets: [{
+      label: 'Volatility (Std Dev)',
+      data: sectorVol,
+      borderColor: '#8b5cf6',
+      backgroundColor: 'rgba(139,92,246,0.15)',
+      borderWidth: 2,
+      pointBackgroundColor: '#8b5cf6',
+      pointRadius: 4,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: { ...tooltipStyle }
+    },
+    scales: {
+      r: {
+        grid: { color: '#1e2d4a' },
+        angleLines: { color: '#1e2d4a' },
+        pointLabels: { font: { size: 10 }, color: '#94a3b8' },
+        ticks: { display: false }
+      }
+    }
+  }
+});
+
+/* ── 5. VOLUME ──────────────────────── */
+const volLabels = ['NVDA','TSLA','AAPL','AMD','INTC','NFLX','AMZN','T','BAC','PFE'];
+const volData   = [482.1,121.8,82.7,76.2,75.4,72.2,70.3,54.6,54.3,44.9];
+
+new Chart(document.getElementById('volumeChart'), {
+  type: 'bar',
+  data: {
+    labels: volLabels,
+    datasets: [{
+      label: 'Total Volume (B)',
+      data: volData,
+      backgroundColor: 'rgba(59,130,246,0.7)',
+      borderColor: '#3b82f6',
+      borderWidth: 1,
+      borderRadius: 8,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: { ...tooltipStyle, callbacks: { label: ctx => ` ${ctx.parsed.y}B shares` } }
+    },
+    scales: {
+      x: { grid: { display: false } },
+      y: { grid: { color: 'rgba(255,255,255,.03)' }, ticks: { callback: v => v + 'B' } }
+    }
+  }
+});
+
+/* ── 6. RISK VS RETURN SCATTER ──────── */
+const riskReturnData = [
+  { x: 2.051,  y: 0.0503, label: 'Technology' },
+  { x: 1.7547, y: 0.0139, label: 'Consumer Cyc.' },
+  { x: 1.72,   y: 0.0269, label: 'Energy' },
+  { x: 1.5644, y: 0.0346, label: 'Communication' },
+  { x: 1.4855, y: 0.0267, label: 'Financial' },
+  { x: 1.4578, y: 0.0174, label: 'Industrials' },
+  { x: 1.4482, y: 0.0108, label: 'Real Estate' },
+  { x: 1.3037, y: 0.0211, label: 'Healthcare' },
+  { x: 1.2603, y: 0.0029, label: 'Utilities' },
+  { x: 1.0049, y: 0.0268, label: 'Consumer Def.' },
+];
+const scatterColors = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316','#84cc16','#e879f9','#14b8a6'];
+
+new Chart(document.getElementById('riskReturnChart'), {
+  type: 'bubble',
+  data: {
+    datasets: riskReturnData.map((d, i) => ({
+      label: d.label,
+      data: [{ x: d.x, y: d.y, r: 10 }],
+      backgroundColor: scatterColors[i] + 'aa',
+      borderColor: scatterColors[i],
+      borderWidth: 2,
+    }))
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: true,
+        position: 'right',
+        labels: { boxWidth: 10, font: { size: 10 }, padding: 8 }
+      },
+      tooltip: {
+        ...tooltipStyle,
+        callbacks: {
+          label: ctx => `${ctx.dataset.label}: Risk=${ctx.parsed.x.toFixed(2)}, Return=${ctx.parsed.y.toFixed(4)}%`
+        }
+      }
+    },
+    scales: {
+      x: {
+        title: { display: true, text: 'Volatility (Risk) →', color: '#64748b', font: { size: 11 } },
+        grid: { color: 'rgba(255,255,255,.03)' }
+      },
+      y: {
+        title: { display: true, text: 'Avg Daily Return % →', color: '#64748b', font: { size: 11 } },
+        grid: { color: 'rgba(255,255,255,.03)' }
+      }
+    }
+  }
+});
+</script>
+</body>
+</html>

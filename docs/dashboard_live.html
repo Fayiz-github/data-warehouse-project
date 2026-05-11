@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Stock Market Data Warehouse — Live Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#060b18;--surface:#0d1526;--card:#111c33;--border:#1a2d50;
+  --accent1:#3b82f6;--accent2:#10b981;--accent3:#f59e0b;
+  --accent4:#ef4444;--accent5:#8b5cf6;--accent6:#06b6d4;
+  --text:#e2e8f0;--muted:#4a6080;
+}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh}
+
+/* scrollbar */
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* ── HEADER ── */
+header{
+  background:linear-gradient(135deg,#07112a 0%,#0e2146 50%,#07112a 100%);
+  border-bottom:1px solid var(--border);
+  padding:0 36px;height:70px;
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:200;
+}
+.logo{display:flex;align-items:center;gap:14px}
+.logo-icon{
+  width:42px;height:42px;border-radius:12px;
+  background:linear-gradient(135deg,var(--accent1),var(--accent5));
+  display:flex;align-items:center;justify-content:center;font-size:20px;
+  box-shadow:0 0 20px rgba(59,130,246,.4);
+}
+.logo h1{font-size:17px;font-weight:800;color:#fff;letter-spacing:-.3px}
+.logo p{font-size:11px;color:var(--muted);margin-top:2px}
+.header-right{display:flex;align-items:center;gap:16px}
+.live-pill{
+  display:flex;align-items:center;gap:7px;
+  background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.3);
+  padding:5px 12px;border-radius:20px;font-size:11px;font-weight:600;color:var(--accent2);
+}
+.live-dot{width:7px;height:7px;background:var(--accent2);border-radius:50%;animation:blink 1.5s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.last-updated{font-size:11px;color:var(--muted)}
+
+/* ── MAIN LAYOUT ── */
+.container{max-width:1500px;margin:0 auto;padding:28px 36px 60px}
+
+/* ── SECTION HEADER ── */
+.sec-head{display:flex;align-items:center;gap:10px;margin:32px 0 16px}
+.sec-head .bar{width:3px;height:18px;border-radius:2px;background:var(--accent1)}
+.sec-head h2{font-size:12px;font-weight:700;letter-spacing:2px;color:var(--muted);text-transform:uppercase}
+
+/* ── KPI GRID ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px}
+.kpi{
+  background:var(--card);border:1px solid var(--border);border-radius:18px;
+  padding:20px 18px;position:relative;overflow:hidden;
+  cursor:default;transition:transform .25s,box-shadow .25s;
+}
+.kpi:hover{transform:translateY(-4px);box-shadow:0 16px 48px rgba(0,0,0,.5)}
+.kpi-glow{
+  position:absolute;top:-30px;right:-30px;
+  width:80px;height:80px;border-radius:50%;opacity:.15;
+}
+.kpi-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.kpi-icon{font-size:20px}
+.kpi-trend{font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px}
+.kpi-trend.up{background:rgba(16,185,129,.15);color:var(--accent2)}
+.kpi-trend.na{background:rgba(100,116,139,.1);color:var(--muted)}
+.kpi-value{font-size:26px;font-weight:900;color:#fff;letter-spacing:-1px;line-height:1}
+.kpi-label{font-size:11px;color:var(--muted);margin-top:6px}
+.kpi-sub{font-size:10px;font-weight:600;margin-top:4px}
+.kpi.c1 .kpi-glow{background:var(--accent1)}
+.kpi.c2 .kpi-glow{background:var(--accent2)}
+.kpi.c3 .kpi-glow{background:var(--accent3)}
+.kpi.c4 .kpi-glow{background:var(--accent5)}
+.kpi.c5 .kpi-glow{background:var(--accent4)}
+.kpi.c6 .kpi-glow{background:var(--accent6)}
+.kpi.c1 .kpi-sub{color:var(--accent1)}
+.kpi.c2 .kpi-sub{color:var(--accent2)}
+.kpi.c3 .kpi-sub{color:var(--accent3)}
+.kpi.c4 .kpi-sub{color:var(--accent5)}
+.kpi.c5 .kpi-sub{color:var(--accent4)}
+.kpi.c6 .kpi-sub{color:var(--accent6)}
+
+/* ── CHARTS ── */
+.row{display:grid;gap:18px;margin-bottom:18px}
+.row.c2{grid-template-columns:2fr 1fr}
+.row.c11{grid-template-columns:1fr 1fr}
+.row.c1{grid-template-columns:1fr}
+
+.chart-card{
+  background:var(--card);border:1px solid var(--border);border-radius:20px;
+  padding:24px;transition:box-shadow .25s;
+}
+.chart-card:hover{box-shadow:0 8px 40px rgba(59,130,246,.07)}
+.ch{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;gap:12px}
+.ch h3{font-size:14px;font-weight:700;color:#fff}
+.ch p{font-size:11px;color:var(--muted);margin-top:3px}
+.chip{
+  font-size:10px;font-weight:700;padding:3px 9px;border-radius:8px;
+  white-space:nowrap;flex-shrink:0;
+}
+.chip.blue  {background:rgba(59,130,246,.15);color:var(--accent1)}
+.chip.green {background:rgba(16,185,129,.15);color:var(--accent2)}
+.chip.amber {background:rgba(245,158,11,.15);color:var(--accent3)}
+.chip.purple{background:rgba(139,92,246,.15);color:var(--accent5)}
+.chip.cyan  {background:rgba(6,182,212,.15);color:var(--accent6)}
+
+.canvas-wrap{position:relative}
+
+/* ── SPINNER ── */
+.spinner-wrap{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  background:var(--card);border-radius:12px;z-index:10;
+  transition:opacity .3s;
+}
+.spinner-wrap.hidden{opacity:0;pointer-events:none}
+.spinner{
+  width:32px;height:32px;border:3px solid var(--border);
+  border-top-color:var(--accent1);border-radius:50%;
+  animation:spin .8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── ERROR BANNER ── */
+.error-banner{
+  background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);
+  color:#fca5a5;padding:12px 20px;border-radius:12px;font-size:13px;
+  margin-bottom:20px;display:none;
+}
+
+/* ── FOOTER ── */
+footer{
+  text-align:center;color:var(--muted);font-size:12px;
+  margin-top:48px;padding-top:24px;border-top:1px solid var(--border);
+}
+footer strong{color:var(--accent1)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">📈</div>
+    <div>
+      <h1>Stock Market Data Warehouse</h1>
+      <p>Mohammed (Fayiz) · Data Engineering Project · PostgreSQL 18</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="live-pill"><div class="live-dot"></div>Live from Database</div>
+    <span class="last-updated" id="lastUpdated">Loading…</span>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="error-banner" id="errBanner">
+    ⚠️ Could not connect to the database API. Make sure <code>dashboard_app.py</code> is running on port 5000.
+  </div>
+
+  <!-- KPIs -->
+  <div class="sec-head"><div class="bar"></div><h2>Key Performance Indicators</h2></div>
+  <div class="kpi-grid">
+    <div class="kpi c1">
+      <div class="kpi-glow"></div>
+      <div class="kpi-top"><span class="kpi-icon">🗄️</span><span class="kpi-trend na">FACT TABLE</span></div>
+      <div class="kpi-value" id="kpi-rows">—</div>
+      <div class="kpi-label">Total Fact Rows</div>
+      <div class="kpi-sub">✅ 100K Target Met</div>
+    </div>
+    <div class="kpi c2">
+      <div class="kpi-glow"></div>
+      <div class="kpi-top"><span class="kpi-icon">📊</span><span class="kpi-trend up">LIVE</span></div>
+      <div class="kpi-value" id="kpi-symbols">—</div>
+      <div class="kpi-label">Stocks Tracked</div>
+      <div class="kpi-sub">Across 10 Sectors</div>
+    </div>
+    <div class="kpi c3">
+      <div class="kpi-glow"></div>
+      <div class="kpi-top"><span class="kpi-icon">📅</span><span class="kpi-trend na">RANGE</span></div>
+      <div class="kpi-value" id="kpi-years">5 Yrs</div>
+      <div class="kpi-label">Date Coverage</div>
+      <div class="kpi-sub" id="kpi-daterange">2021 → 2026</div>
+    </div>
+    <div class="kpi c4">
+      <div class="kpi-glow"></div>
+      <div class="kpi-top"><span class="kpi-icon">🏆</span><span class="kpi-trend up">TOP</span></div>
+      <div class="kpi-value" id="kpi-best-pct">—</div>
+      <div class="kpi-label">Best 5yr Return</div>
+      <div class="kpi-sub" id="kpi-best-sym">Loading…</div>
+    </div>
+    <div class="kpi c5">
+      <div class="kpi-glow"></div>
+      <div class="kpi-top"><span class="kpi-icon">✅</span><span class="kpi-trend up">ALL PASS</span></div>
+      <div class="kpi-value">31/31</div>
+      <div class="kpi-label">Quality Checks</div>
+      <div class="kpi-sub">0 Failures</div>
+    </div>
+    <div class="kpi c6">
+      <div class="kpi-glow"></div>
+      <div class="kpi-top"><span class="kpi-icon">💰</span><span class="kpi-trend up">AVG</span></div>
+      <div class="kpi-value" id="kpi-avg-close">—</div>
+      <div class="kpi-label">Avg Close Price</div>
+      <div class="kpi-sub" id="kpi-avg-return">Loading…</div>
+    </div>
+  </div>
+
+  <!-- Row 1: Price Trend + Top Stocks -->
+  <div class="sec-head"><div class="bar" style="background:var(--accent2)"></div><h2>Market Overview</h2></div>
+  <div class="row c2">
+    <div class="chart-card">
+      <div class="ch">
+        <div><h3>Average Market Price Trend</h3><p>Mean closing price across all 80 stocks — updates daily</p></div>
+        <span class="chip blue">Time Series · Live</span>
+      </div>
+      <div class="canvas-wrap" style="height:290px">
+        <div class="spinner-wrap" id="sp-trend"><div class="spinner"></div></div>
+        <canvas id="priceTrendChart"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="ch">
+        <div><h3>Top 10 — 5yr Total Return</h3><p>Best performing stocks since 2021</p></div>
+        <span class="chip green">% Gain</span>
+      </div>
+      <div class="canvas-wrap" style="height:290px">
+        <div class="spinner-wrap" id="sp-top"><div class="spinner"></div></div>
+        <canvas id="topStocksChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 2: Sector Return + Volatility -->
+  <div class="sec-head"><div class="bar" style="background:var(--accent3)"></div><h2>Sector Analysis</h2></div>
+  <div class="row c11">
+    <div class="chart-card">
+      <div class="ch">
+        <div><h3>Sector Avg Daily Return</h3><p>Which sector gives the highest daily returns?</p></div>
+        <span class="chip amber">Avg %/Day</span>
+      </div>
+      <div class="canvas-wrap" style="height:260px">
+        <div class="spinner-wrap" id="sp-sr"><div class="spinner"></div></div>
+        <canvas id="sectorReturnChart"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="ch">
+        <div><h3>Sector Volatility (Risk)</h3><p>Standard deviation of daily returns</p></div>
+        <span class="chip purple">Std Dev</span>
+      </div>
+      <div class="canvas-wrap" style="height:260px">
+        <div class="spinner-wrap" id="sp-sv"><div class="spinner"></div></div>
+        <canvas id="sectorVolChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 3: Volume + Scatter -->
+  <div class="sec-head"><div class="bar" style="background:var(--accent5)"></div><h2>Volume & Risk-Return</h2></div>
+  <div class="row c11">
+    <div class="chart-card">
+      <div class="ch">
+        <div><h3>Top 10 Stocks by Volume</h3><p>Cumulative trading volume over 5 years (billions)</p></div>
+        <span class="chip blue">B Shares</span>
+      </div>
+      <div class="canvas-wrap" style="height:260px">
+        <div class="spinner-wrap" id="sp-vol"><div class="spinner"></div></div>
+        <canvas id="volumeChart"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="ch">
+        <div><h3>Risk vs. Return by Sector</h3><p>Ideal: high return + low volatility (top-left)</p></div>
+        <span class="chip cyan">Scatter</span>
+      </div>
+      <div class="canvas-wrap" style="height:260px">
+        <div class="spinner-wrap" id="sp-rr"><div class="spinner"></div></div>
+        <canvas id="riskReturnChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  Stock Market Data Warehouse · <strong>PostgreSQL 18</strong> · <strong>Python 3 / Flask</strong> · <strong>yfinance</strong> &nbsp;|&nbsp;
+  Star Schema: 6 Dimensions + 1 Fact Table &nbsp;|&nbsp;
+  <strong>Mohammed (Fayiz)</strong> · Data Engineering Internship · May 2026
+</footer>
+
+<script>
+const API = 'http://localhost:5000/api';
+Chart.defaults.color = '#4a6080';
+Chart.defaults.borderColor = '#1a2d50';
+Chart.defaults.font.family = 'Inter';
+const TT = {
+  backgroundColor:'#0d1526',borderColor:'#1a2d50',borderWidth:1,
+  titleColor:'#e2e8f0',bodyColor:'#6b8ab0',padding:14,cornerRadius:12
+};
+
+const charts = {};
+let allLoaded = 0;
+const totalCharts = 6;
+
+function hideSpinner(id){ document.getElementById(id)?.classList.add('hidden'); }
+function showError(){ document.getElementById('errBanner').style.display='block'; }
+
+/* ── FETCH HELPERS ──────────────────── */
+async function get(path){
+  const r = await fetch(API + path);
+  if(!r.ok) throw new Error(r.statusText);
+  return r.json();
+}
+
+/* ── KPIs ───────────────────────────── */
+async function loadKPIs(){
+  try{
+    const d = await get('/kpis');
+    document.getElementById('kpi-rows').textContent = Number(d.total_rows).toLocaleString();
+    document.getElementById('kpi-symbols').textContent = d.total_symbols;
+    const s = d.date_start ? d.date_start.slice(0,10) : '';
+    const e = d.date_end   ? d.date_end.slice(0,10)   : '';
+    document.getElementById('kpi-daterange').textContent = `${s} → ${e}`;
+    document.getElementById('kpi-best-pct').textContent = `+${d.best_return?.toLocaleString()}%`;
+    document.getElementById('kpi-best-sym').textContent = d.best_symbol;
+    document.getElementById('kpi-avg-close').textContent = `$${parseFloat(d.avg_close_price).toFixed(2)}`;
+    document.getElementById('kpi-avg-return').textContent = `Avg Daily Return: ${d.avg_daily_return}%`;
+    document.getElementById('lastUpdated').textContent = 'Live · ' + new Date().toLocaleTimeString();
+  }catch(e){ showError(); }
+}
+
+/* ── PRICE TREND ─────────────────────── */
+async function loadPriceTrend(){
+  try{
+    const d = await get('/price-trend');
+    charts.trend = new Chart(document.getElementById('priceTrendChart'),{
+      type:'line',
+      data:{
+        labels: d.labels,
+        datasets:[{
+          label:'Avg Close ($)',data:d.data,
+          borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,.07)',
+          borderWidth:2.5,fill:true,tension:.4,
+          pointRadius:0,pointHoverRadius:6,pointHoverBackgroundColor:'#3b82f6'
+        }]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{...TT,mode:'index',intersect:false,
+          callbacks:{label:c=>' $'+c.parsed.y.toFixed(2)}}},
+        scales:{
+          x:{grid:{color:'rgba(255,255,255,.02)'},ticks:{maxTicksLimit:8}},
+          y:{grid:{color:'rgba(255,255,255,.02)'},ticks:{callback:v=>'$'+v}}
+        }
+      }
+    });
+    hideSpinner('sp-trend');
+  }catch(e){ hideSpinner('sp-trend'); showError(); }
+}
+
+/* ── TOP STOCKS ──────────────────────── */
+async function loadTopStocks(){
+  const colors=['#10b981','#3b82f6','#8b5cf6','#f59e0b','#ef4444','#06b6d4','#f97316','#84cc16','#e879f9','#14b8a6'];
+  try{
+    const d = await get('/top-stocks');
+    charts.top = new Chart(document.getElementById('topStocksChart'),{
+      type:'bar',
+      data:{labels:d.labels,datasets:[{
+        label:'5yr Return %',data:d.data,
+        backgroundColor:colors,borderRadius:8,borderSkipped:false
+      }]},
+      options:{
+        indexAxis:'y',responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{...TT,callbacks:{label:c=>` +${c.parsed.x.toFixed(1)}%`}}},
+        scales:{
+          x:{grid:{color:'rgba(255,255,255,.02)'},ticks:{callback:v=>v+'%'}},
+          y:{grid:{display:false}}
+        }
+      }
+    });
+    hideSpinner('sp-top');
+  }catch(e){ hideSpinner('sp-top'); }
+}
+
+/* ── SECTOR RETURN ───────────────────── */
+async function loadSectorReturn(){
+  try{
+    const d = await get('/sector-return');
+    const short = d.labels.map(l=>l.replace(' Services','').replace(' Cyclical',' Cyc.').replace(' Defensive',' Def.'));
+    charts.sr = new Chart(document.getElementById('sectorReturnChart'),{
+      type:'bar',
+      data:{labels:short,datasets:[{
+        label:'Avg Daily Return %',data:d.data,
+        backgroundColor:'rgba(245,158,11,.75)',borderColor:'#f59e0b',
+        borderWidth:1,borderRadius:6
+      }]},
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{...TT,callbacks:{label:c=>` ${c.parsed.y.toFixed(4)}%`}}},
+        scales:{
+          x:{grid:{display:false},ticks:{font:{size:10}}},
+          y:{grid:{color:'rgba(255,255,255,.02)'},ticks:{callback:v=>v+'%'}}
+        }
+      }
+    });
+    hideSpinner('sp-sr');
+  }catch(e){ hideSpinner('sp-sr'); }
+}
+
+/* ── SECTOR VOLATILITY ───────────────── */
+async function loadSectorVol(){
+  try{
+    const d = await get('/sector-volatility');
+    const short = d.labels.map(l=>l.replace(' Services','').replace(' Cyclical',' Cyc.').replace(' Defensive',' Def.'));
+    charts.sv = new Chart(document.getElementById('sectorVolChart'),{
+      type:'radar',
+      data:{labels:short,datasets:[{
+        label:'Volatility',data:d.data,
+        borderColor:'#8b5cf6',backgroundColor:'rgba(139,92,246,.12)',
+        borderWidth:2,pointBackgroundColor:'#8b5cf6',pointRadius:4
+      }]},
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{...TT}},
+        scales:{r:{
+          grid:{color:'#1a2d50'},angleLines:{color:'#1a2d50'},
+          pointLabels:{font:{size:10},color:'#6b8ab0'},ticks:{display:false}
+        }}
+      }
+    });
+    hideSpinner('sp-sv');
+  }catch(e){ hideSpinner('sp-sv'); }
+}
+
+/* ── VOLUME ──────────────────────────── */
+async function loadVolume(){
+  try{
+    const d = await get('/volume');
+    charts.vol = new Chart(document.getElementById('volumeChart'),{
+      type:'bar',
+      data:{labels:d.labels,datasets:[{
+        label:'Volume (B)',data:d.data,
+        backgroundColor:'rgba(59,130,246,.7)',borderColor:'#3b82f6',
+        borderWidth:1,borderRadius:8
+      }]},
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{...TT,callbacks:{label:c=>` ${c.parsed.y}B shares`}}},
+        scales:{
+          x:{grid:{display:false}},
+          y:{grid:{color:'rgba(255,255,255,.02)'},ticks:{callback:v=>v+'B'}}
+        }
+      }
+    });
+    hideSpinner('sp-vol');
+  }catch(e){ hideSpinner('sp-vol'); }
+}
+
+/* ── RISK VS RETURN ──────────────────── */
+async function loadRiskReturn(){
+  const colors=['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316','#84cc16','#e879f9','#14b8a6'];
+  try{
+    const data = await get('/risk-return');
+    charts.rr = new Chart(document.getElementById('riskReturnChart'),{
+      type:'bubble',
+      data:{
+        datasets: data.map((d,i)=>({
+          label: d.sector,
+          data:[{x:d.volatility, y:d.return, r:11}],
+          backgroundColor: colors[i]+'99',
+          borderColor: colors[i],
+          borderWidth:2,
+        }))
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{
+          legend:{display:true,position:'right',labels:{boxWidth:10,font:{size:10},padding:8}},
+          tooltip:{...TT,callbacks:{
+            label:c=>`${c.dataset.label}: Risk=${c.parsed.x.toFixed(2)}, Ret=${c.parsed.y.toFixed(4)}%`
+          }}
+        },
+        scales:{
+          x:{title:{display:true,text:'Volatility (Risk) →',color:'#4a6080',font:{size:11}},grid:{color:'rgba(255,255,255,.02)'}},
+          y:{title:{display:true,text:'Avg Daily Return % →',color:'#4a6080',font:{size:11}},grid:{color:'rgba(255,255,255,.02)'}}
+        }
+      }
+    });
+    hideSpinner('sp-rr');
+  }catch(e){ hideSpinner('sp-rr'); }
+}
+
+/* ── BOOT ────────────────────────────── */
+(async()=>{
+  await loadKPIs();
+  await Promise.all([
+    loadPriceTrend(), loadTopStocks(),
+    loadSectorReturn(), loadSectorVol(),
+    loadVolume(), loadRiskReturn()
+  ]);
+  // Auto-refresh KPIs every 60 seconds
+  setInterval(loadKPIs, 60000);
+})();
+</script>
+</body>
+</html>

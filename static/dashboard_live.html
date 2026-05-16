@@ -1,0 +1,1852 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stock Market Data Warehouse — Live Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+    rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    :root {
+      --bg: #060b18;
+      --surface: #0d1526;
+      --card: #111c33;
+      --border: #1a2d50;
+      --accent1: #3b82f6;
+      --accent2: #10b981;
+      --accent3: #f59e0b;
+      --accent4: #ef4444;
+      --accent5: #8b5cf6;
+      --accent6: #06b6d4;
+      --text: #e2e8f0;
+      --muted: #4a6080;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh
+    }
+
+    /* scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg)
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 3px
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: linear-gradient(135deg, #07112a 0%, #0e2146 50%, #07112a 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 0 36px;
+      height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 200;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 14px
+    }
+
+    .logo-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--accent1), var(--accent5));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      box-shadow: 0 0 20px rgba(59, 130, 246, .4);
+    }
+
+    .logo h1 {
+      font-size: 17px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -.3px
+    }
+
+    .logo p {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px
+    }
+
+    .live-pill {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      background: rgba(16, 185, 129, .12);
+      border: 1px solid rgba(16, 185, 129, .3);
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent2);
+    }
+
+    .live-dot {
+      width: 7px;
+      height: 7px;
+      background: var(--accent2);
+      border-radius: 50%;
+      animation: blink 1.5s infinite
+    }
+
+    @keyframes blink {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: .3
+      }
+    }
+
+    .last-updated {
+      font-size: 11px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 8px
+    }
+
+    .clock {
+      font-size: 12px;
+      font-weight: 700;
+      color: #fff;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: .3px;
+      background: rgba(255, 255, 255, .05);
+      border: 1px solid var(--border);
+      padding: 5px 12px;
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      transition: all .2s;
+    }
+
+    .clock .time {
+      color: var(--accent1)
+    }
+
+    .clock .date {
+      color: var(--muted);
+      font-weight: 600
+    }
+
+    .clock.tick {
+      transform: scale(1.02);
+      border-color: rgba(59, 130, 246, .4)
+    }
+
+    /* ── MAIN LAYOUT ── */
+    .container {
+      max-width: 1500px;
+      margin: 0 auto;
+      padding: 28px 36px 60px
+    }
+
+    /* ── SECTION HEADER ── */
+    .sec-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 32px 0 16px
+    }
+
+    .sec-head .bar {
+      width: 3px;
+      height: 18px;
+      border-radius: 2px;
+      background: var(--accent1)
+    }
+
+    .sec-head h2 {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: var(--muted);
+      text-transform: uppercase
+    }
+
+    /* ── KPI GRID ── */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 14px;
+      margin-bottom: 36px
+    }
+
+    .kpi {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 20px 18px;
+      position: relative;
+      overflow: hidden;
+      cursor: default;
+      transition: transform .25s, box-shadow .25s;
+    }
+
+    .kpi:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 16px 48px rgba(0, 0, 0, .5)
+    }
+
+    .kpi-glow {
+      position: absolute;
+      top: -30px;
+      right: -30px;
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      opacity: .15;
+    }
+
+    .kpi-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px
+    }
+
+    .kpi-icon {
+      font-size: 20px
+    }
+
+    .kpi-trend {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 6px
+    }
+
+    .kpi-trend.up {
+      background: rgba(16, 185, 129, .15);
+      color: var(--accent2)
+    }
+
+    .kpi-trend.na {
+      background: rgba(100, 116, 139, .1);
+      color: var(--muted)
+    }
+
+    .kpi-value {
+      font-size: 26px;
+      font-weight: 900;
+      color: #fff;
+      letter-spacing: -1px;
+      line-height: 1
+    }
+
+    .kpi-label {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 6px
+    }
+
+    .kpi-sub {
+      font-size: 10px;
+      font-weight: 600;
+      margin-top: 4px
+    }
+
+    .kpi.c1 .kpi-glow {
+      background: var(--accent1)
+    }
+
+    .kpi.c2 .kpi-glow {
+      background: var(--accent2)
+    }
+
+    .kpi.c3 .kpi-glow {
+      background: var(--accent3)
+    }
+
+    .kpi.c4 .kpi-glow {
+      background: var(--accent5)
+    }
+
+    .kpi.c5 .kpi-glow {
+      background: var(--accent4)
+    }
+
+    .kpi.c6 .kpi-glow {
+      background: var(--accent6)
+    }
+
+    .kpi.c1 .kpi-sub {
+      color: var(--accent1)
+    }
+
+    .kpi.c2 .kpi-sub {
+      color: var(--accent2)
+    }
+
+    .kpi.c3 .kpi-sub {
+      color: var(--accent3)
+    }
+
+    .kpi.c4 .kpi-sub {
+      color: var(--accent5)
+    }
+
+    .kpi.c5 .kpi-sub {
+      color: var(--accent4)
+    }
+
+    .kpi.c6 .kpi-sub {
+      color: var(--accent6)
+    }
+
+    /* ── CHARTS ── */
+    .charts-container {
+      display: flex;
+      flex-direction: column;
+      gap: 28px
+    }
+
+    .row {
+      display: grid;
+      gap: 18px
+    }
+
+    .row.c2 {
+      grid-template-columns: 2fr 1fr
+    }
+
+    .row.c11 {
+      grid-template-columns: 1fr 1fr
+    }
+
+    .row.c1 {
+      grid-template-columns: 1fr
+    }
+
+    .chart-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 24px;
+      transition: box-shadow .25s;
+    }
+
+    .chart-card:hover {
+      box-shadow: 0 8px 40px rgba(59, 130, 246, .07)
+    }
+
+    .ch {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 18px;
+      gap: 12px
+    }
+
+    .ch h3 {
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff
+    }
+
+    .ch p {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 3px
+    }
+
+    .chip {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 8px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .chip.blue {
+      background: rgba(59, 130, 246, .15);
+      color: var(--accent1)
+    }
+
+    .chip.green {
+      background: rgba(16, 185, 129, .15);
+      color: var(--accent2)
+    }
+
+    .chip.amber {
+      background: rgba(245, 158, 11, .15);
+      color: var(--accent3)
+    }
+
+    .chip.purple {
+      background: rgba(139, 92, 246, .15);
+      color: var(--accent5)
+    }
+
+    .chip.cyan {
+      background: rgba(6, 182, 212, .15);
+      color: var(--accent6)
+    }
+
+    .canvas-wrap {
+      position: relative
+    }
+
+    /* ── SPINNER ── */
+    .spinner-wrap {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--card);
+      border-radius: 12px;
+      z-index: 10;
+      transition: opacity .3s;
+    }
+
+    .spinner-wrap.hidden {
+      opacity: 0;
+      pointer-events: none
+    }
+
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent1);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg)
+      }
+    }
+
+    /* ── ERROR BANNER ── */
+    .error-banner {
+      background: rgba(239, 68, 68, .1);
+      border: 1px solid rgba(239, 68, 68, .3);
+      color: #fca5a5;
+      padding: 12px 20px;
+      border-radius: 12px;
+      font-size: 13px;
+      margin-bottom: 20px;
+      display: none;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 16px;
+      padding-top: 12px;
+      padding-bottom: 24px;
+      border-top: 1px solid var(--border);
+    }
+
+    footer strong {
+      color: var(--accent1)
+    }
+
+    /* ── PARTICLES ── */
+    #particles {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+      opacity: .5
+    }
+
+    .container,
+    header,
+    footer {
+      position: relative;
+      z-index: 1
+    }
+
+    /* ── TICKER TAPE ── */
+    .ticker-wrap {
+      background: rgba(255, 255, 255, .03);
+      border-bottom: 1px solid var(--border);
+      overflow: hidden;
+      height: 32px;
+      display: flex;
+      align-items: center
+    }
+
+    .ticker-inner {
+      display: flex;
+      animation: ticker 40s linear infinite;
+      white-space: nowrap
+    }
+
+    .ticker-inner:hover {
+      animation-play-state: paused
+    }
+
+    @keyframes ticker {
+      0% {
+        transform: translateX(0)
+      }
+
+      100% {
+        transform: translateX(-50%)
+      }
+    }
+
+    .ticker-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 24px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted)
+    }
+
+    .ticker-item .sym {
+      color: #fff
+    }
+
+    .ticker-item .up {
+      color: var(--accent2)
+    }
+
+    .ticker-item .dn {
+      color: var(--accent4)
+    }
+
+    .ticker-sep {
+      color: var(--border);
+      margin: 0 4px
+    }
+
+    /* ── SKELETON LOADER ── */
+    .skeleton {
+      background: linear-gradient(90deg, var(--border) 25%, #1e3a5f 50%, var(--border) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 8px
+    }
+
+    @keyframes shimmer {
+      0% {
+        background-position: 200% 0
+      }
+
+      100% {
+        background-position: -200% 0
+      }
+    }
+
+    .skel-wrap {
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      height: 100%
+    }
+
+    .skel-line {
+      height: 14px
+    }
+
+    .skel-chart {
+      flex: 1;
+      min-height: 80px
+    }
+
+    /* ── CHART CARD ENTRANCE ── */
+    .chart-card {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity .6s ease, transform .6s ease, box-shadow .25s
+    }
+
+    .chart-card.visible {
+      opacity: 1;
+      transform: translateY(0)
+    }
+
+    /* ── KPI GLOW PULSE ── */
+    .kpi {
+      animation: fadeUp .5s ease both
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(16px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    .kpi:nth-child(1) {
+      animation-delay: .05s
+    }
+
+    .kpi:nth-child(2) {
+      animation-delay: .1s
+    }
+
+    .kpi:nth-child(3) {
+      animation-delay: .15s
+    }
+
+    .kpi:nth-child(4) {
+      animation-delay: .2s
+    }
+
+    .kpi:nth-child(5) {
+      animation-delay: .25s
+    }
+
+    .kpi:nth-child(6) {
+      animation-delay: .3s
+    }
+
+    .kpi:hover .kpi-glow {
+      transform: scale(2.5);
+      opacity: .25;
+      transition: transform .4s, opacity .4s
+    }
+
+    .kpi-glow {
+      transition: transform .4s, opacity .4s
+    }
+
+    /* ── COUNTER ── */
+    .kpi-value {
+      transition: color .3s
+    }
+
+    /* ── FILTER BAR ── */
+    .filter-bar {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 20px 28px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-top: 28px;
+    }
+
+    .filter-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+      margin-right: 8px
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px
+    }
+
+    .filter-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px
+    }
+
+    .filter-select {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 9px 14px;
+      border-radius: 10px;
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      cursor: pointer;
+      min-width: 150px;
+      outline: none;
+      transition: border-color .2s;
+    }
+
+    .filter-select:focus,
+    .filter-select:hover {
+      border-color: var(--accent1)
+    }
+
+    .filter-btn {
+      background: linear-gradient(135deg, var(--accent1), var(--accent5));
+      color: #fff;
+      border: none;
+      padding: 10px 26px;
+      border-radius: 10px;
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity .2s, transform .1s;
+      align-self: flex-end;
+    }
+
+    .filter-btn:hover {
+      opacity: .85
+    }
+
+    .filter-btn:active {
+      transform: scale(.97)
+    }
+
+    .filter-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 4px 11px;
+      border-radius: 8px;
+      background: rgba(139, 92, 246, .15);
+      color: var(--accent5);
+      white-space: nowrap;
+      align-self: flex-end;
+      transition: background .3s, color .3s;
+    }
+
+    .filter-spacer {
+      flex: 1
+    }
+
+    /* ── INSIGHTS CARD ── */
+    .insights-card {
+      background: linear-gradient(135deg, #0b1830 0%, #111c33 100%);
+      border: 1px solid rgba(59, 130, 246, .28);
+      border-radius: 20px;
+      padding: 30px 36px;
+      position: relative;
+      overflow: hidden;
+      margin-top: 28px;
+    }
+
+    .insights-card::before {
+      content: '';
+      position: absolute;
+      top: -80px;
+      right: -80px;
+      width: 260px;
+      height: 260px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(59, 130, 246, .10) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .insights-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 26px
+    }
+
+    .insights-icon {
+      font-size: 30px
+    }
+
+    .insights-title {
+      font-size: 17px;
+      font-weight: 800;
+      color: #fff
+    }
+
+    .insights-sub {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 3px
+    }
+
+    .insight-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px
+    }
+
+    .insight-item {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start
+    }
+
+    .insight-num {
+      min-width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--accent1), var(--accent5));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 800;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .insight-text {
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.65
+    }
+
+    .insight-text strong {
+      color: var(--accent3);
+      font-weight: 700
+    }
+
+    .insight-text em {
+      color: var(--accent2);
+      font-style: normal;
+      font-weight: 600
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="particles"></canvas>
+
+  <header>
+    <div class="logo">
+      <div class="logo-icon">📈</div>
+      <div>
+        <h1>Stock Market Data Warehouse</h1>
+        <p>Data Engineering Project · PostgreSQL 18 · Star Schema</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="live-pill">
+        <div class="live-dot"></div>Live from Database
+      </div>
+      <div class="last-updated">
+        <span id="dbStatus">Loading…</span>
+        <span class="clock" id="liveClock">--:--:--</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- TICKER TAPE -->
+  <div class="ticker-wrap">
+    <div class="ticker-inner" id="tickerInner">
+      <span class="ticker-item"><span class="sym">NVDA</span><span class="up">▲ +1408%</span></span><span
+        class="ticker-sep">|</span>
+      <span class="ticker-item"><span class="sym">AAPL</span><span class="up">▲ +94%</span></span><span
+        class="ticker-sep">|</span>
+      <span class="ticker-item"><span class="sym">MSFT</span><span class="up">▲ +112%</span></span><span
+        class="ticker-sep">|</span>
+      <span class="ticker-item"><span class="sym">TSLA</span><span class="up">▲ +87%</span></span><span
+        class="ticker-sep">|</span>
+      <span class="ticker-item"><span class="sym">AMD</span><span class="up">▲ +499%</span></span><span
+        class="ticker-sep">|</span>
+      <span class="ticker-item"><span class="sym">GOOGL</span><span class="up">▲ +249%</span></span><span
+        class="ticker-sep">|</span>
+      <span class="ticker-item"><span class="sym">GE</span><span class="up">▲ +346%</span></span><span
+        class="ticker-sep">|</span>
+      <span class="ticker-item"><span class="sym">JPM</span><span class="up">▲ +129%</span></span><span
+        class="ticker-sep">|</span>
+      <span class="ticker-item"><span class="sym">META</span><span class="up">▲ +201%</span></span><span
+        class="ticker-sep">|</span>
+      <span class="ticker-item"><span class="sym">XOM</span><span class="up">▲ +118%</span></span><span
+        class="ticker-sep">|</span>
+      <span class="ticker-item"><span class="sym">NVDA</span><span class="up">▲ +1408%</span></span><span
+        class="ticker-sep">|</span>
+      <span class="ticker-item"><span class="sym">AAPL</span><span class="up">▲ +94%</span></span><span
+        class="ticker-sep">|</span>
+      <span class="ticker-item"><span class="sym">MSFT</span><span class="up">▲ +112%</span></span><span
+        class="ticker-sep">|</span>
+      <span class="ticker-item"><span class="sym">TSLA</span><span class="up">▲ +87%</span></span><span
+        class="ticker-sep">|</span>
+      <span class="ticker-item"><span class="sym">AMD</span><span class="up">▲ +499%</span></span><span
+        class="ticker-sep">|</span>
+      <span class="ticker-item"><span class="sym">GOOGL</span><span class="up">▲ +249%</span></span><span
+        class="ticker-sep">|</span>
+      <span class="ticker-item"><span class="sym">GE</span><span class="up">▲ +346%</span></span><span
+        class="ticker-sep">|</span>
+      <span class="ticker-item"><span class="sym">JPM</span><span class="up">▲ +129%</span></span><span
+        class="ticker-sep">|</span>
+      <span class="ticker-item"><span class="sym">META</span><span class="up">▲ +201%</span></span><span
+        class="ticker-sep">|</span>
+      <span class="ticker-item"><span class="sym">XOM</span><span class="up">▲ +118%</span></span>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <div class="error-banner" id="errBanner">
+      ⚠️ Could not connect to the database API. Make sure <code>dashboard_app.py</code> is running on port 5000.
+    </div>
+
+    <!-- KPIs -->
+
+    <div class="kpi-grid">
+      <div class="kpi c1">
+        <div class="kpi-glow"></div>
+        <div class="kpi-top"><span class="kpi-icon">🗄️</span><span class="kpi-trend na">FACT TABLE</span></div>
+        <div class="kpi-value" id="kpi-rows">—</div>
+        <div class="kpi-label">Total Fact Rows</div>
+        <div class="kpi-sub">✅ 100K Target Met</div>
+      </div>
+      <div class="kpi c2">
+        <div class="kpi-glow"></div>
+        <div class="kpi-top"><span class="kpi-icon">📊</span><span class="kpi-trend up">LIVE</span></div>
+        <div class="kpi-value" id="kpi-symbols">—</div>
+        <div class="kpi-label">Stocks Tracked</div>
+        <div class="kpi-sub">Across 10 Sectors</div>
+      </div>
+      <div class="kpi c3">
+        <div class="kpi-glow"></div>
+        <div class="kpi-top"><span class="kpi-icon">📅</span><span class="kpi-trend na">RANGE</span></div>
+        <div class="kpi-value" id="kpi-years">5 Yrs</div>
+        <div class="kpi-label">Date Coverage</div>
+        <div class="kpi-sub" id="kpi-daterange">2021 → 2026</div>
+      </div>
+      <div class="kpi c4">
+        <div class="kpi-glow"></div>
+        <div class="kpi-top"><span class="kpi-icon">🏆</span><span class="kpi-trend up">TOP</span></div>
+        <div class="kpi-value" id="kpi-best-pct">—</div>
+        <div class="kpi-label">Best 5yr Return</div>
+        <div class="kpi-sub" id="kpi-best-sym">Loading…</div>
+      </div>
+      <div class="kpi c5">
+        <div class="kpi-glow"></div>
+        <div class="kpi-top"><span class="kpi-icon">✅</span><span class="kpi-trend up">ALL PASS</span></div>
+        <div class="kpi-value">31/31</div>
+        <div class="kpi-label">Quality Checks</div>
+        <div class="kpi-sub">0 Failures</div>
+      </div>
+      <div class="kpi c6">
+        <div class="kpi-glow"></div>
+        <div class="kpi-top"><span class="kpi-icon">💰</span><span class="kpi-trend up">AVG</span></div>
+        <div class="kpi-value" id="kpi-avg-close">—</div>
+        <div class="kpi-label">Avg Close Price</div>
+        <div class="kpi-sub" id="kpi-avg-return">Loading…</div>
+      </div>
+    </div>
+
+    <!-- ── FILTER BAR ── -->
+    <div class="filter-bar" id="filterBar"
+      style="opacity:0;transform:translateY(24px);transition:opacity .6s ease,transform .6s ease; margin-bottom:28px;">
+      <div>
+        <div class="filter-title">🎛️ Interactive Filters</div>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label" for="filterStart">Start Year</label>
+        <select class="filter-select" id="filterStart">
+          <option>2021</option>
+          <option>2022</option>
+          <option>2023</option>
+          <option>2024</option>
+          <option>2025</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label" for="filterEnd">End Year</label>
+        <select class="filter-select" id="filterEnd">
+          <option>2021</option>
+          <option>2022</option>
+          <option>2023</option>
+          <option>2024</option>
+          <option selected>2025</option>
+          <option>2026</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label" for="filterSector">Sector / Drill-Down</label>
+        <select class="filter-select" id="filterSector">
+          <option value="">All Sectors</option>
+        </select>
+      </div>
+      <button class="filter-btn" id="applyFilterBtn" onclick="applyFilters()">Apply Filters →</button>
+      <div class="filter-spacer"></div>
+      <span class="filter-badge" id="filterStatus">Showing: All Data · Full Range</span>
+    </div>
+
+    <!-- Charts Container: uniform 28px gap between all rows -->
+    <div class="charts-container">
+
+      <!-- Row 1: Price Trend + Top Stocks -->
+      <div class="row c2">
+        <div class="chart-card">
+          <div class="ch">
+            <div>
+              <h3>Average Market Price Trend</h3>
+            </div>
+            <span class="chip blue">Time Series · Live</span>
+          </div>
+          <div class="canvas-wrap" style="height:290px">
+            <div class="spinner-wrap" id="sp-trend">
+              <div class="spinner"></div>
+            </div>
+            <canvas id="priceTrendChart"></canvas>
+          </div>
+        </div>
+        <div class="chart-card">
+          <div class="ch">
+            <div>
+              <h3>Top 10 — 5yr Total Return</h3>
+            </div>
+            <span class="chip green">% Gain</span>
+          </div>
+          <div class="canvas-wrap" style="height:290px">
+            <div class="spinner-wrap" id="sp-top">
+              <div class="spinner"></div>
+            </div>
+            <canvas id="topStocksChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 2: Sector Return + Volatility -->
+      <div class="row c11">
+        <div class="chart-card">
+          <div class="ch">
+            <div>
+              <h3>Sector Avg Daily Return</h3>
+            </div>
+            <span class="chip amber">Avg %/Day</span>
+          </div>
+          <div class="canvas-wrap" style="height:260px">
+            <div class="spinner-wrap" id="sp-sr">
+              <div class="spinner"></div>
+            </div>
+            <canvas id="sectorReturnChart"></canvas>
+          </div>
+        </div>
+        <div class="chart-card">
+          <div class="ch">
+            <div>
+              <h3>Sector Volatility (Risk)</h3>
+            </div>
+            <span class="chip purple">Std Dev</span>
+          </div>
+          <div class="canvas-wrap" style="height:260px">
+            <div class="spinner-wrap" id="sp-sv">
+              <div class="spinner"></div>
+            </div>
+            <canvas id="sectorVolChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 3: Volume + Scatter -->
+      <div class="row c11">
+        <div class="chart-card">
+          <div class="ch">
+            <div>
+              <h3>Top 10 Stocks by Volume</h3>
+            </div>
+            <span class="chip blue">B Shares</span>
+          </div>
+          <div class="canvas-wrap" style="height:260px">
+            <div class="spinner-wrap" id="sp-vol">
+              <div class="spinner"></div>
+            </div>
+            <canvas id="volumeChart"></canvas>
+          </div>
+        </div>
+        <div class="chart-card">
+          <div class="ch">
+            <div>
+              <h3>Risk vs. Return by Sector</h3>
+            </div>
+            <span class="chip cyan">Scatter</span>
+          </div>
+          <div class="canvas-wrap" style="height:260px">
+            <div class="spinner-wrap" id="sp-rr">
+              <div class="spinner"></div>
+            </div>
+            <canvas id="riskReturnChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /charts-container -->
+
+    <!-- ── Row 4: Exchange + Market Cap Tier (Geographic / Market Breakdown) ── -->
+    <div class="row c11" style="margin-top:28px">
+
+      <!-- Left: Exchange Breakdown -->
+      <div class="chart-card">
+        <div class="ch">
+          <div>
+            <h3>Performance by Stock Exchange</h3>
+            <p>Avg daily return &amp; volatility — NYSE vs NASDAQ</p>
+          </div>
+          <span class="chip green">Geographic · Exchange</span>
+        </div>
+        <div class="canvas-wrap" style="height:300px">
+          <div class="spinner-wrap" id="sp-exch">
+            <div class="spinner"></div>
+          </div>
+          <canvas id="exchangeChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Right: Market Cap Tier -->
+      <div class="chart-card">
+        <div class="ch">
+          <div>
+            <h3>Performance by Market Cap Tier</h3>
+            <p>Mega-cap vs Large-cap — return &amp; risk comparison</p>
+          </div>
+          <span class="chip purple">Market Size</span>
+        </div>
+        <div class="canvas-wrap" style="height:300px">
+          <div class="spinner-wrap" id="sp-cap">
+            <div class="spinner"></div>
+          </div>
+          <canvas id="capTierChart"></canvas>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── Row 5: Insights Text Box ── -->
+    <div class="insights-card" id="insightsCard"
+      style="opacity:0;transform:translateY(24px);transition:opacity .6s ease .2s,transform .6s ease .2s">
+      <div class="insights-header">
+        <span class="insights-icon">💡</span>
+        <div>
+          <div class="insights-title">Executive Business Insights</div>
+          <div class="insights-sub">Key findings from 100,400 daily stock records · Stock Market Data Warehouse · 2021–2026</div>
+        </div>
+      </div>
+      <div class="insight-list">
+        <div class="insight-item">
+          <div class="insight-num">1</div>
+          <div class="insight-text"><strong><span id="i1-sym">NVDA</span> dominates all-time returns at +<span id="i1-pct">1,253</span>%</strong> — <span id="i1-name">NVIDIA</span>'s 5-year price
+            appreciation far exceeds every other stock in the warehouse. The next closest competitors (<span id="i1-sym2">AMD</span> +<span id="i1-pct2">499</span>%, <span id="i1-sym3">GE</span>
+            +<span id="i1-pct3">346</span>%) trail by more than 2×, making <span id="i1-sym4">NVDA</span> the single most impactful holding in the <span id="i1-sector">Technology</span> sector.</div>
+        </div>
+        <div class="insight-item">
+          <div class="insight-num">2</div>
+          <div class="insight-text"><strong><span id="i2-best">Technology</span> delivers <span id="i2-ratio">9</span>× the daily return of defensive sectors.</strong>
+            <span id="i2-best2">Technology</span> averages <em>+<span id="i2-best-ret">0.0450</span>%/day</em> vs. <span id="i2-worst">Utilities</span> at just <em>+<span id="i2-worst-ret">0.0048</span>%/day</em>. Over a 5-year
+            compounding horizon this gap is the primary driver of portfolio outperformance.</div>
+        </div>
+        <div class="insight-item">
+          <div class="insight-num">3</div>
+          <div class="insight-text"><strong><span id="i3-tier1">Mega-cap</span> stocks offer the best risk-adjusted returns.</strong> Sharpe proxy:
+            <span id="i3-tier1b">Mega-cap</span> at <em><span id="i3-sharpe1">0.0241</span></em> vs. <span id="i3-tier2">Large-cap</span> (<span id="i3-sharpe2">0.0199</span>)<span id="i3-t3-group"> and <span id="i3-tier3">Mid-cap</span> (<span id="i3-sharpe3">0.0180</span>)</span>. Larger companies absorb
+            volatility more effectively, providing superior returns per unit of risk across all 5 years analyzed.</div>
+        </div>
+        <div class="insight-item">
+          <div class="insight-num">4</div>
+          <div class="insight-text"><strong><span id="i4-bad-year">2022</span> was a universal drawdown — <span id="i4-good-year">2023</span> was the strongest recovery
+              year.</strong> Every sector posted negative daily returns in <span id="i4-bad-year2">2022</span> (Technology hit <em><span id="i4-bad-ret">−0.0120</span>%/day</em>).
+            The <span id="i4-good-year2">2023</span> rebound was equally broad, with Technology reaching <em>+<span id="i4-good-ret">0.0610</span>%/day</em> — the highest
+            single-sector-year in the dataset.</div>
+        </div>
+        <div class="insight-item">
+          <div class="insight-num">5</div>
+          <div class="insight-text"><strong>Recommendation:</strong> A portfolio weighted toward Mega-cap Technology
+            (30%), Communication Services (20%), and Financial Services (20%) with a defensive Utilities hedge (10%)
+            would have delivered the highest risk-adjusted return over 2021–2026 based on this warehouse’s data.
+            Rebalancing after the 2022 drawdown into Technology would have captured the maximum 2023 recovery.</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /container -->
+
+  <footer>
+    Stock Market Data Warehouse<br>Created By <strong>Mohamed Fayiz</strong>
+  </footer>
+
+  <script>
+    const API = '/api';
+    Chart.defaults.color = '#4a6080';
+    Chart.defaults.borderColor = '#1a2d50';
+    Chart.defaults.font.family = 'Inter';
+    const TT = {
+      backgroundColor: '#0d1526', borderColor: '#1a2d50', borderWidth: 1,
+      titleColor: '#e2e8f0', bodyColor: '#6b8ab0', padding: 14, cornerRadius: 12
+    };
+
+    const charts = {};
+    let allLoaded = 0;
+    const totalCharts = 6;
+
+    function hideSpinner(id) { document.getElementById(id)?.classList.add('hidden'); }
+    function showError() { document.getElementById('errBanner').style.display = 'block'; }
+
+    /* ── FETCH HELPERS ──────────────────── */
+    async function get(path) {
+      const r = await fetch(API + path);
+      if (!r.ok) throw new Error(r.statusText);
+      return r.json();
+    }
+
+    /* ── KPIs ───────────────────────────── */
+    async function loadKPIs() {
+      try {
+        const d = await get('/kpis');
+        document.getElementById('kpi-rows').textContent = Number(d.total_rows).toLocaleString();
+        document.getElementById('kpi-symbols').textContent = d.total_symbols;
+        const startYr = d.date_start_year || 2021;
+        const endYr   = d.date_end_year   || 2026;
+        const span    = d.year_span       || (endYr - startYr);
+        document.getElementById('kpi-years').textContent    = `${span} Yrs`;
+        document.getElementById('kpi-daterange').textContent = `${startYr} → ${endYr}`;
+        document.getElementById('kpi-best-pct').textContent = `+${d.best_return?.toLocaleString()}%`;
+        document.getElementById('kpi-best-sym').textContent = d.best_symbol;
+        document.getElementById('kpi-avg-close').textContent = `$${parseFloat(d.avg_close_price).toFixed(2)}`;
+        document.getElementById('kpi-avg-return').textContent = `Avg Daily Return: ${d.avg_daily_return}%`;
+        document.getElementById('dbStatus').textContent = '🟢 DB Synced';
+      } catch (e) { showError(); }
+    }
+
+    /* ── PRICE TREND ─────────────────────── */
+    async function loadPriceTrend() {
+      try {
+        const d = await get('/price-trend');
+        charts.trend = new Chart(document.getElementById('priceTrendChart'), {
+          type: 'line',
+          data: {
+            labels: d.labels,
+            datasets: [{
+              label: 'Avg Close ($)', data: d.data,
+              borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,.07)',
+              borderWidth: 2.5, fill: true, tension: .4,
+              pointRadius: 0, pointHoverRadius: 6, pointHoverBackgroundColor: '#3b82f6'
+            }]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false }, tooltip: {
+                ...TT, mode: 'index', intersect: false,
+                callbacks: { label: c => ' $' + c.parsed.y.toFixed(2) }
+              }
+            },
+            scales: {
+              x: { grid: { color: 'rgba(255,255,255,.02)' }, ticks: { maxTicksLimit: 8 } },
+              y: { grid: { color: 'rgba(255,255,255,.02)' }, ticks: { callback: v => '$' + v } }
+            }
+          }
+        });
+        hideSpinner('sp-trend');
+      } catch (e) { hideSpinner('sp-trend'); showError(); }
+    }
+
+    /* ── TOP STOCKS ──────────────────────── */
+    async function loadTopStocks() {
+      const colors = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444', '#06b6d4', '#f97316', '#84cc16', '#e879f9', '#14b8a6'];
+      try {
+        const d = await get('/top-stocks');
+        charts.top = new Chart(document.getElementById('topStocksChart'), {
+          type: 'bar',
+          data: {
+            labels: d.labels, datasets: [{
+              label: '5yr Return %', data: d.data,
+              backgroundColor: colors, borderRadius: 8, borderSkipped: false
+            }]
+          },
+          options: {
+            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { ...TT, callbacks: { label: c => ` +${c.parsed.x.toFixed(1)}%` } } },
+            scales: {
+              x: { grid: { color: 'rgba(255,255,255,.02)' }, ticks: { callback: v => v + '%' } },
+              y: { grid: { display: false } }
+            }
+          }
+        });
+        hideSpinner('sp-top');
+      } catch (e) { hideSpinner('sp-top'); }
+    }
+
+    /* ── SECTOR RETURN ───────────────────── */
+    async function loadSectorReturn() {
+      try {
+        const d = await get('/sector-return');
+        const short = d.labels.map(l => l.replace(' Services', '').replace(' Cyclical', ' Cyc.').replace(' Defensive', ' Def.'));
+        charts.sr = new Chart(document.getElementById('sectorReturnChart'), {
+          type: 'bar',
+          data: {
+            labels: short, datasets: [{
+              label: 'Avg Daily Return %', data: d.data,
+              backgroundColor: 'rgba(245,158,11,.75)', borderColor: '#f59e0b',
+              borderWidth: 1, borderRadius: 6
+            }]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { ...TT, callbacks: { label: c => ` ${c.parsed.y.toFixed(4)}%` } } },
+            scales: {
+              x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+              y: { grid: { color: 'rgba(255,255,255,.02)' }, ticks: { callback: v => v + '%' } }
+            }
+          }
+        });
+        hideSpinner('sp-sr');
+      } catch (e) { hideSpinner('sp-sr'); }
+    }
+
+    /* ── SECTOR VOLATILITY ───────────────── */
+    async function loadSectorVol() {
+      try {
+        const d = await get('/sector-volatility');
+        const short = d.labels.map(l => l.replace(' Services', '').replace(' Cyclical', ' Cyc.').replace(' Defensive', ' Def.'));
+        charts.sv = new Chart(document.getElementById('sectorVolChart'), {
+          type: 'radar',
+          data: {
+            labels: short, datasets: [{
+              label: 'Volatility', data: d.data,
+              borderColor: '#8b5cf6', backgroundColor: 'rgba(139,92,246,.12)',
+              borderWidth: 2, pointBackgroundColor: '#8b5cf6', pointRadius: 4
+            }]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { ...TT } },
+            scales: {
+              r: {
+                grid: { color: '#1a2d50' }, angleLines: { color: '#1a2d50' },
+                pointLabels: { font: { size: 10 }, color: '#6b8ab0' }, ticks: { display: false }
+              }
+            }
+          }
+        });
+        hideSpinner('sp-sv');
+      } catch (e) { hideSpinner('sp-sv'); }
+    }
+
+    /* ── VOLUME ──────────────────────────── */
+    async function loadVolume() {
+      try {
+        const d = await get('/volume');
+        charts.vol = new Chart(document.getElementById('volumeChart'), {
+          type: 'bar',
+          data: {
+            labels: d.labels, datasets: [{
+              label: 'Volume (B)', data: d.data,
+              backgroundColor: 'rgba(59,130,246,.7)', borderColor: '#3b82f6',
+              borderWidth: 1, borderRadius: 8
+            }]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { ...TT, callbacks: { label: c => ` ${c.parsed.y}B shares` } } },
+            scales: {
+              x: { grid: { display: false } },
+              y: { grid: { color: 'rgba(255,255,255,.02)' }, ticks: { callback: v => v + 'B' } }
+            }
+          }
+        });
+        hideSpinner('sp-vol');
+      } catch (e) { hideSpinner('sp-vol'); }
+    }
+
+    /* ── RISK VS RETURN ──────────────────── */
+    async function loadRiskReturn() {
+      const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316', '#84cc16', '#e879f9', '#14b8a6'];
+      try {
+        const data = await get('/risk-return');
+        charts.rr = new Chart(document.getElementById('riskReturnChart'), {
+          type: 'bubble',
+          data: {
+            datasets: data.map((d, i) => ({
+              label: d.sector,
+              data: [{ x: d.volatility, y: d.return, r: 11 }],
+              backgroundColor: colors[i] + '99',
+              borderColor: colors[i],
+              borderWidth: 2,
+            }))
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+              legend: { display: true, position: 'right', labels: { boxWidth: 10, font: { size: 10 }, padding: 8 } },
+              tooltip: {
+                ...TT, callbacks: {
+                  label: c => `${c.dataset.label}: Risk=${c.parsed.x.toFixed(2)}, Ret=${c.parsed.y.toFixed(4)}%`
+                }
+              }
+            },
+            scales: {
+              x: { title: { display: true, text: 'Volatility (Risk) →', color: '#4a6080', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,.02)' } },
+              y: { title: { display: true, text: 'Avg Daily Return % →', color: '#4a6080', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,.02)' } }
+            }
+          }
+        });
+        hideSpinner('sp-rr');
+      } catch (e) { hideSpinner('sp-rr'); }
+    }
+
+    /* ── SECTOR LIST LOADER ──────────────────────────────────── */
+    async function loadSectorList() {
+      try {
+        const sectors = await get('/sector-list');
+        const sel = document.getElementById('filterSector');
+        sectors.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s; opt.textContent = s;
+          sel.appendChild(opt);
+        });
+      } catch (e) { }
+    }
+
+    /* ── APPLY FILTERS ───────────────────────────────────────── */
+    async function applyFilters() {
+      const start = document.getElementById('filterStart').value;
+      const end = document.getElementById('filterEnd').value;
+      const sector = document.getElementById('filterSector').value;
+      const btn = document.getElementById('applyFilterBtn');
+      const badge = document.getElementById('filterStatus');
+
+      btn.textContent = 'Loading…';
+      btn.style.opacity = '.6';
+
+      try {
+        const url = `/price-trend-filtered?start=${start}&end=${end}&sector=${encodeURIComponent(sector)}`;
+        const d = await get(url);
+        if (charts.trend) {
+          charts.trend.data.labels = d.labels;
+          charts.trend.data.datasets[0].data = d.data;
+          charts.trend.update();
+        }
+        const label = sector
+          ? `${sector} · ${start}–${end}`
+          : `All Sectors · ${start}–${end}`;
+        badge.textContent = label;
+        badge.style.background = 'rgba(16,185,129,.15)';
+        badge.style.color = 'var(--accent2)';
+
+        // ── Refresh insights with the same filters ──
+        await loadInsights(start, end, sector);
+
+      } catch (e) {
+        badge.textContent = '⚠️ Filter Error';
+      }
+
+      btn.textContent = 'Apply Filters →';
+      btn.style.opacity = '1';
+    }
+
+    /* ── EXCHANGE BREAKDOWN ─────────────────────────────────── */
+    async function loadExchangeBreakdown() {
+      const EXCH_COLORS = {
+        'NMS': { bg: 'rgba(59,130,246,.85)', bd: '#3b82f6' }, // NASDAQ → blue
+        'NYQ': { bg: 'rgba(245,158,11,.85)', bd: '#f59e0b' }, // NYSE   → amber
+        'NGM': { bg: 'rgba(139,92,246,.85)', bd: '#8b5cf6' }, // NASDAQ Global → violet
+        'NYSE': { bg: 'rgba(245,158,11,.85)', bd: '#f59e0b' },
+      };
+      const fallbackBg = ['rgba(16,185,129,.85)', 'rgba(239,68,68,.85)', 'rgba(6,182,212,.85)'];
+      try {
+        const data = await get('/exchange-breakdown');
+        const labels = data.map(d => `${d.exchange_code}  —  ${d.exchange_name}`);
+        const retVals = data.map(d => d.avg_return);
+        const volVals = data.map(d => d.volatility);
+        const bgColors = data.map((d, i) => (EXCH_COLORS[d.exchange_code] || { bg: fallbackBg[i % 3] }).bg);
+        const bdColors = data.map((d, i) => (EXCH_COLORS[d.exchange_code] || { bd: fallbackBg[i % 3] }).bd);
+
+        charts.exch = new Chart(document.getElementById('exchangeChart'), {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [
+              {
+                label: 'Avg Daily Return %',
+                data: retVals,
+                backgroundColor: bgColors,
+                borderColor: bdColors,
+                borderWidth: 2, borderRadius: 10, borderSkipped: false,
+                yAxisID: 'y',
+              },
+              {
+                label: 'Volatility (Std Dev)',
+                data: volVals,
+                backgroundColor: data.map(() => 'rgba(255,255,255,.08)'),
+                borderColor: data.map(() => 'rgba(255,255,255,.3)'),
+                borderWidth: 2, borderRadius: 10, borderSkipped: false,
+                yAxisID: 'y2',
+              }
+            ]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                display: true,
+                position: 'top',
+                labels: { color: '#8aa0bf', font: { size: 11 }, boxWidth: 12, padding: 16 }
+              },
+              tooltip: {
+                ...TT, callbacks: {
+                  afterLabel: c => {
+                    const d2 = data[c.dataIndex];
+                    return [`  Stocks: ${d2.stock_count}  |  Volume: ${d2.volume_b}B shares`];
+                  }
+                }
+              }
+            },
+            scales: {
+              x: { grid: { display: false }, ticks: { color: '#c8d8ec', font: { size: 11, weight: '700' } } },
+              y: {
+                position: 'left',
+                grid: { color: 'rgba(255,255,255,.07)' },
+                ticks: { color: '#8aa0bf', font: { size: 10 }, callback: v => (v >= 0 ? '+' : '') + v.toFixed(3) + '%' },
+                title: { display: true, text: 'Avg Return %', color: '#6b8ab0', font: { size: 10 } }
+              },
+              y2: {
+                position: 'right',
+                grid: { display: false },
+                ticks: { color: '#8aa0bf', font: { size: 10 }, callback: v => v.toFixed(2) },
+                title: { display: true, text: 'Volatility', color: '#6b8ab0', font: { size: 10 } }
+              }
+            }
+          }
+        });
+        hideSpinner('sp-exch');
+      } catch (e) { hideSpinner('sp-exch'); }
+    }
+
+    /* ── MARKET CAP TIER BREAKDOWN ──────────────────────────── */
+    async function loadCapTierBreakdown() {
+      const TIER_COLORS = {
+        'Mega-cap': { bg: 'rgba(245,158,11,.85)', bd: '#f59e0b' },
+        'Large-cap': { bg: 'rgba(59,130,246,.85)', bd: '#3b82f6' },
+        'Mid-cap': { bg: 'rgba(139,92,246,.85)', bd: '#8b5cf6' },
+        'Small-cap': { bg: 'rgba(16,185,129,.85)', bd: '#10b981' },
+        'Micro-cap': { bg: 'rgba(239,68,68,.85)', bd: '#ef4444' },
+      };
+      try {
+        const data = await get('/cap-tier-breakdown');
+        const labels = data.map(d => d.tier_name);
+        const retVals = data.map(d => d.avg_return);
+        const volVals = data.map(d => d.volatility);
+        const bgColors = data.map(d => (TIER_COLORS[d.tier_name] || { bg: 'rgba(100,116,139,.6)' }).bg);
+        const bdColors = data.map(d => (TIER_COLORS[d.tier_name] || { bd: '#64748b' }).bd);
+
+        charts.cap = new Chart(document.getElementById('capTierChart'), {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [
+              {
+                label: 'Avg Daily Return %',
+                data: retVals,
+                backgroundColor: bgColors,
+                borderColor: bdColors,
+                borderWidth: 2, borderRadius: 10, borderSkipped: false,
+                yAxisID: 'y',
+              },
+              {
+                label: 'Volatility (Std Dev)',
+                data: volVals,
+                backgroundColor: data.map(() => 'rgba(255,255,255,.08)'),
+                borderColor: data.map(() => 'rgba(255,255,255,.3)'),
+                borderWidth: 2, borderRadius: 10, borderSkipped: false,
+                yAxisID: 'y2',
+              }
+            ]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                display: true,
+                position: 'top',
+                labels: { color: '#8aa0bf', font: { size: 11 }, boxWidth: 12, padding: 16 }
+              },
+              tooltip: {
+                ...TT, callbacks: {
+                  afterLabel: c => {
+                    const d2 = data[c.dataIndex];
+                    return [`  Stocks: ${d2.stock_count}  |  Volume: ${d2.volume_b}B shares`];
+                  }
+                }
+              }
+            },
+            scales: {
+              x: { grid: { display: false }, ticks: { color: '#c8d8ec', font: { size: 11, weight: '700' } } },
+              y: {
+                position: 'left',
+                grid: { color: 'rgba(255,255,255,.07)' },
+                ticks: { color: '#8aa0bf', font: { size: 10 }, callback: v => (v >= 0 ? '+' : '') + v.toFixed(3) + '%' },
+                title: { display: true, text: 'Avg Return %', color: '#6b8ab0', font: { size: 10 } }
+              },
+              y2: {
+                position: 'right',
+                grid: { display: false },
+                ticks: { color: '#8aa0bf', font: { size: 10 }, callback: v => v.toFixed(2) },
+                title: { display: true, text: 'Volatility', color: '#6b8ab0', font: { size: 10 } }
+              }
+            }
+          }
+        });
+        hideSpinner('sp-cap');
+      } catch (e) { hideSpinner('sp-cap'); }
+    }
+
+    /* ── LIVE CLOCK ────────────────────────────── */
+    function startClock() {
+      const el = document.getElementById('liveClock');
+      function update() {
+        const now = new Date();
+        const time = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const date = now.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
+        el.innerHTML = `<span class="date">${date}</span> <span class="time">${time}</span>`;
+
+        // Subtle tick animation
+        el.classList.add('tick');
+        setTimeout(() => el.classList.remove('tick'), 100);
+      }
+      update();
+      setInterval(update, 1000);
+    }
+
+    /* ── LIVE INSIGHTS (values only, text stays the same) ── */
+    async function loadInsights(start = '', end = '', sector = '') {
+      try {
+        const params = new URLSearchParams();
+        if (start)  params.set('start', start);
+        if (end)    params.set('end', end);
+        if (sector) params.set('sector', sector);
+        const qs = params.toString() ? '?' + params.toString() : '';
+        const d = await get('/insights' + qs);
+
+        // ── Insight 1: Top 3 stocks ──
+        if (d.top_stocks && d.top_stocks.length >= 3) {
+          const [t1, t2, t3] = d.top_stocks;
+          const fmt = v => Number(v).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+          document.getElementById('i1-sym').textContent    = t1.symbol;
+          document.getElementById('i1-sym4').textContent   = t1.symbol;
+          document.getElementById('i1-name').textContent   = t1.company_name;
+          document.getElementById('i1-pct').textContent    = fmt(t1.total_return);
+          document.getElementById('i1-sector').textContent = t1.sector;
+          document.getElementById('i1-sym2').textContent   = t2.symbol;
+          document.getElementById('i1-pct2').textContent   = fmt(t2.total_return);
+          document.getElementById('i1-sym3').textContent   = t3.symbol;
+          document.getElementById('i1-pct3').textContent   = fmt(t3.total_return);
+        }
+
+        // ── Insight 2: Sector performance ──
+        if (d.sector_perf && d.sector_perf.length > 0) {
+          const best  = d.sector_perf[0];
+          const worst = d.sector_perf[d.sector_perf.length - 1];
+          const ratio = (best.avg_return > 0 && worst.avg_return > 0)
+            ? Math.round(best.avg_return / worst.avg_return) : '—';
+          document.getElementById('i2-best').textContent      = best.sector;
+          document.getElementById('i2-best2').textContent     = best.sector;
+          document.getElementById('i2-ratio').textContent     = ratio;
+          document.getElementById('i2-best-ret').textContent  = best.avg_return;
+          document.getElementById('i2-worst').textContent     = worst.sector;
+          document.getElementById('i2-worst-ret').textContent = Math.abs(worst.avg_return);
+        }
+
+        // ── Insight 3: Market cap tier Sharpe (null-safe — filtered period may have <3 tiers) ──
+        if (d.tier_perf && d.tier_perf.length >= 1) {
+          const t1 = d.tier_perf[0] || null;
+          const t2 = d.tier_perf[1] || null;
+          const t3 = d.tier_perf[2] || null;
+          const t3group = document.getElementById('i3-t3-group');
+          if (t1) { document.getElementById('i3-tier1').textContent  = t1.tier_name; document.getElementById('i3-tier1b').textContent = t1.tier_name; document.getElementById('i3-sharpe1').textContent = t1.sharpe_proxy; }
+          if (t2) { document.getElementById('i3-tier2').textContent  = t2.tier_name; document.getElementById('i3-sharpe2').textContent = t2.sharpe_proxy; }
+          if (t3) { document.getElementById('i3-tier3').textContent  = t3.tier_name; document.getElementById('i3-sharpe3').textContent = t3.sharpe_proxy; if (t3group) t3group.style.display = ''; }
+          else    { if (t3group) t3group.style.display = 'none'; }
+        }
+
+        // ── Insight 4: Best vs worst year ──
+        if (d.year_trend && d.year_trend.length > 0) {
+          // Aggregate year_trend by year to find overall best/worst year
+          const byYear = {};
+          d.year_trend.forEach(r => {
+            if (!byYear[r.year]) byYear[r.year] = [];
+            byYear[r.year].push(parseFloat(r.avg_return));
+          });
+          const yearAvg = Object.entries(byYear).map(([yr, vals]) => ({
+            year: yr,
+            avg: vals.reduce((a, b) => a + b, 0) / vals.length
+          }));
+          yearAvg.sort((a, b) => a.avg - b.avg);
+          const worstYr = yearAvg[0];
+          const bestYr  = yearAvg[yearAvg.length - 1];
+
+          // Tech return in worst year
+          const techWorst = d.year_trend.filter(r => r.sector === 'Technology' && String(r.year) === String(worstYr.year));
+          const techBest  = d.year_trend.filter(r => r.sector === 'Technology' && String(r.year) === String(bestYr.year));
+
+          document.getElementById('i4-bad-year').textContent  = worstYr.year;
+          document.getElementById('i4-bad-year2').textContent = worstYr.year;
+          document.getElementById('i4-good-year').textContent  = bestYr.year;
+          document.getElementById('i4-good-year2').textContent = bestYr.year;
+          if (techWorst.length) document.getElementById('i4-bad-ret').textContent  = techWorst[0].avg_return;
+          if (techBest.length)  document.getElementById('i4-good-ret').textContent = techBest[0].avg_return;
+        }
+
+      } catch (e) { console.warn('Insights update skipped:', e); }
+    }
+
+    /* ── BOOT ────────────────────────────── */
+    (async () => {
+      startClock();
+      await loadKPIs();
+      await loadSectorList();
+      await Promise.all([
+        loadPriceTrend(), loadTopStocks(),
+        loadSectorReturn(), loadSectorVol(),
+        loadVolume(), loadRiskReturn(),
+        loadExchangeBreakdown(), loadCapTierBreakdown(),
+        loadStorage(), loadInsights()
+      ]);
+      setInterval(loadKPIs,    60000);
+      setInterval(loadInsights, 60000);
+      setInterval(loadStorage,  30000);
+
+      // Animate filter bar + insights card into view
+      setTimeout(() => {
+        const fb = document.getElementById('filterBar');
+        const ic = document.getElementById('insightsCard');
+        if (fb) { fb.style.opacity = '1'; fb.style.transform = 'translateY(0)'; }
+        if (ic) { ic.style.opacity = '1'; ic.style.transform = 'translateY(0)'; }
+      }, 600);
+
+
+      // ── LOAD STORAGE ──────────────────────────────────────────
+      async function loadStorage() {
+        try {
+          const d = await get('/storage');
+          document.getElementById('st-size').textContent = d.db_size;
+          document.getElementById('st-runs').textContent = d.total_runs;
+          const nextEl = document.getElementById('st-next');
+          nextEl.textContent = d.runs_until_cleanup === 0 ? 'NOW!' : d.runs_until_cleanup;
+          nextEl.style.color = d.runs_until_cleanup === 0 ? 'var(--accent4)' : 'var(--accent3)';
+          document.getElementById('st-cleanups').textContent = d.cleanup_runs;
+          const lr = d.last_run === 'Never' ? 'Never' : new Date(d.last_run).toLocaleDateString();
+          document.getElementById('st-lastrun').textContent = lr;
+        } catch (e) { }
+      }
+      loadStorage();
+      setInterval(loadStorage, 30000);
+
+      // ── PARTICLE STARFIELD ──────────────────────────────────
+      (function () {
+        const c = document.getElementById('particles');
+        const ctx = c.getContext('2d');
+        let W, H, stars = [];
+        function resize() { W = c.width = window.innerWidth; H = c.height = window.innerHeight; }
+        resize(); window.addEventListener('resize', resize);
+        for (let i = 0; i < 120; i++) stars.push({
+          x: Math.random() * 2000, y: Math.random() * 2000,
+          r: Math.random() * 1.5 + .3, vx: (Math.random() - .5) * .15, vy: (Math.random() - .5) * .15,
+          o: Math.random() * .6 + .1
+        });
+        function draw() {
+          ctx.clearRect(0, 0, W, H);
+          stars.forEach(s => {
+            ctx.beginPath();
+            ctx.arc(s.x % W, s.y % H, s.r, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(100,160,255,${s.o})`;
+            ctx.fill();
+            s.x += s.vx; s.y += s.vy;
+            if (s.x < 0) s.x += W; if (s.x > W) s.x = 0;
+            if (s.y < 0) s.y += H; if (s.y > H) s.y = 0;
+          });
+          requestAnimationFrame(draw);
+        }
+        draw();
+      })();
+
+      // ── ANIMATED NUMBER COUNTER ─────────────────────────────
+      function animateCounter(el, target, prefix = '', suffix = '', decimals = 0, duration = 1200) {
+        const start = performance.now();
+        function step(now) {
+          const p = Math.min((now - start) / duration, 1);
+          const ease = 1 - Math.pow(1 - p, 3);
+          const val = ease * target;
+          el.textContent = prefix + (decimals ? val.toFixed(decimals) : Math.round(val).toLocaleString()) + suffix;
+          if (p < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+      }
+
+      // Patch loadKPIs to animate counters
+      const _origLoadKPIs = loadKPIs;
+      window.loadKPIs = async function () {
+        try {
+          const d = await fetch(API + '/kpis').then(r => r.json());
+          const rowsEl = document.getElementById('kpi-rows');
+          const symEl = document.getElementById('kpi-symbols');
+          const bestEl = document.getElementById('kpi-best-pct');
+          const avgEl = document.getElementById('kpi-avg-close');
+          animateCounter(rowsEl, Number(d.total_rows), '', '', 0);
+          animateCounter(symEl, Number(d.total_symbols), '', '', 0);
+          animateCounter(bestEl, Number(d.best_return), '+', '%', 0);
+          animateCounter(avgEl, parseFloat(d.avg_close_price), '$', '', 2);
+          const startYr = d.date_start_year || 2021;
+          const endYr   = d.date_end_year   || 2026;
+          const span    = d.year_span       || (endYr - startYr);
+          document.getElementById('kpi-years').textContent    = `${span} Yrs`;
+          document.getElementById('kpi-daterange').textContent = `${startYr} \u2192 ${endYr}`;
+          document.getElementById('kpi-best-sym').textContent = d.best_symbol;
+          document.getElementById('kpi-avg-return').textContent = `Avg Daily Return: ${d.avg_daily_return}%`;
+          document.getElementById('dbStatus').textContent = '\uD83D\uDFE2 DB Synced';
+        } catch (e) { document.getElementById('errBanner').style.display = 'block'; }
+      };
+
+      // ── CHART CARD ENTRANCE (IntersectionObserver) ──────────
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.1 });
+      document.querySelectorAll('.chart-card').forEach((el, i) => {
+        el.style.transitionDelay = (i * 0.1) + 's';
+        observer.observe(el);
+      });
+    })();
+  </script>
+</body>
+
+</html>

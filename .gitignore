@@ -27,14 +27,4 @@ Thumbs.db
 # Scratch / temp scripts
 test_*.py
 
-# Personal reports & generated output (local only, not for GitHub)
-reports/
 
-# Personal report generator scripts (DOCX tooling, not part of core project)
-doc_builder.py
-generate_report.py
-
-# Personal explanation/study documents (local only)
-star_schema_explanation.md
-star_schema_explanation.docx
-Stock_Market_Data_Warehouse_Guide.docx

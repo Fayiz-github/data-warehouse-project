@@ -104,7 +104,10 @@ def run_demo():
             print("  ----|--------------------------|-----|-------|------------|-----------")
             for row in cur.fetchall():
                 k, ind, v, curr, f, t = row
-                print(f"  {k:<3} | {ind:<24} | {v:<3} | {str(curr):<5} | {f} | {t}")
+                ind_str = str(ind) if ind is not None else "N/A"
+                f_str   = str(f)   if f   is not None else "NULL      "
+                t_str   = str(t)   if t   is not None else "NULL      "
+                print(f"  {k:<3} | {ind_str:<24} | {v:<3} | {str(curr):<5} | {f_str} | {t_str}")
 
             print("\n[SUCCESS] SCD Type 2 Demo Complete!")
             print("  Notice how the old stock_key remains valid for old fact rows,")
